@@ -1,0 +1,80 @@
+import os
+from slack_bolt import App
+from slack_bolt.adapter.socket_mode import SocketModeHandler
+import re
+
+# Initializes your app with your bot token and socket mode handler
+app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
+
+
+# Listens to incoming messages that contain "hello"
+@app.message("hello")
+def message_hello(message, say):
+    # say() sends a message to the channel where the event was triggered
+    say(
+        blocks=[
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": f"Hey there <@{message['user']}>!"},
+                "accessory": {
+                    "type": "button",
+                    "text": {"type": "plain_text", "text": "Click Me"},
+                    "action_id": "button_click"
+                }
+            }
+        ],
+        text=f"Hey there <@{message['user']}>!"
+    )
+
+
+@app.action("button_click")
+def action_button_click(body, ack, say):
+    # Acknowledge the action
+    ack()
+    say(f"<@{body['user']['id']}> clicked the button")
+
+
+# Listens to incoming messages that contain "hello"
+# To learn available listener arguments,
+# visit https://slack.dev/bolt-python/api-docs/slack_bolt/kwargs_injection/args.html
+@app.message("test")
+def message_test(message, say):
+    # say() sends a message to the channel where the event was triggered
+    say(f"<@{message['user']}> look I can use emojis too :bonk: :tom-approves:")
+    print(message)
+
+
+@app.message(re.compile("(bonk|Bonk|BONK)"))
+def bonk_someone(message, say):
+    print(message)
+    person_to_bonk = re.search("\<(.*?)\>", message["text"])[0]
+    say(f"BONK {person_to_bonk} :bonk::bonk:")
+
+
+@app.message(re.compile("(tom|Tom)"))
+def react_with_tom(message, client):
+    client.reactions_add(
+        channel=message["channel"],
+        timestamp=message["ts"],
+        name="tom"
+    )
+
+
+@app.message("undergrad")
+def no_undergrads(message, client):
+    client.reactions_add(
+        channel=message["channel"],
+        timestamp=message["ts"],
+        name="underage"
+    )
+
+
+@app.event("message")
+def handle_message_events(body, logger):
+    print("SOMETHING", body)
+    logger.info(body)
+
+
+# Start your app
+if __name__ == "__main__":
+    SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
