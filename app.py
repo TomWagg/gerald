@@ -47,7 +47,9 @@ def message_test(message, say):
 @app.message(re.compile("(bonk|Bonk|BONK)"))
 def bonk_someone(message, say):
     print(message)
-    person_to_bonk = re.search("\<(.*?)\>", message["text"])[0]
+    bonkers = re.search("\<(.*?)\>", message["text"])
+    if bonkers is not None:
+        person_to_bonk = bonkers[0]
     say(f"BONK {person_to_bonk} :bonk::bonk:")
 
 
@@ -60,7 +62,7 @@ def react_with_tom(message, client):
     )
 
 
-@app.message("undergrad")
+@app.message("undergrad|Undergrad")
 def no_undergrads(message, client):
     client.reactions_add(
         channel=message["channel"],
@@ -73,6 +75,22 @@ def no_undergrads(message, client):
 def handle_message_events(body, logger):
     print("SOMETHING", body)
     logger.info(body)
+
+
+# Events API: https://api.slack.com/events-api
+@app.event("app_mention")
+def event_test(say, body):
+    no_matches = True
+
+    status_checkers = ["status", "okay", "ok"]
+    for match in status_checkers:
+        if body["event"]["text"].find(match) > 0:
+            no_matches = False
+            say("Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!")
+            break
+
+    if no_matches:
+        say("Okay I heard you, but I'm also not a very smart bot so I don't know what you want from me")
 
 
 # Start your app
