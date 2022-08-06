@@ -285,7 +285,26 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
                         "emoji": True
                     },
                     "value": ",".join(not_these),
-                    "action_id": "whinetime-re-roll"
+                    "action_id": "whinetime-re-roll",
+                    "style": "danger",
+                    "confirm": {
+                        "title": {
+                            "type": "plain_text",
+                            "text": "Are you sure?"
+                        },
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "Wouldn't you rather be relaxing at whinetime :pleading_face:?"
+                        },
+                        "confirm": {
+                            "type": "plain_text",
+                            "text": "Do it"
+                        },
+                        "deny": {
+                            "type": "plain_text",
+                            "text": "Stop, I've changed my mind!"
+                        }
+                    },
                 }
             ]
         },
@@ -296,10 +315,10 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
 
 
 @app.event("app_mention")
-def reply_to_mentions(say, body, client):
+def reply_to_mentions(say, body):
     confused = []
     for triggers, response in zip([["status", "okay", "ok", "how are you"],
-                                   ["thank", "you're the best"]],
+                                   ["thank", "you're the best", "nice job", "good work", "good job"]],
                                   ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
                                    ["You're welcome!", "My pleasure!", "Happy to help!"]]):
         confused.append(mention_trigger(message=body["event"]["text"], triggers=triggers, response=response,
@@ -420,15 +439,13 @@ def custom_strftime(format, t):
     return t.strftime(format).replace('{S}', str(t.day) + suffix(t.day))
 
 
-def scheduled_function():
+def every_morning():
     print("Test test test")
-
-scheduler = BackgroundScheduler({'apscheduler.timezone': 'US/Pacific'})
-scheduler.add_job(scheduled_function, "cron", day_of_week="sat", hour=10, minute=25)
-# scheduler.add_job(scheduled_function, "interval", seconds=5)
 
 
 # start Gerald
 if __name__ == "__main__":
+    scheduler = BackgroundScheduler({'apscheduler.timezone': 'US/Pacific'})
+    scheduler.add_job(every_morning, "cron", day_of_week="sat", hour=10, minute=25)
     scheduler.start()
     SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
