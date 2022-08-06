@@ -13,59 +13,28 @@ app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 GERALD_ID = "U03SY9R6D5X"
 
 
-def suffix(d):
-    return 'th' if 11 <= d <= 13 else {1: 'st',2: 'nd',3: 'rd'}.get(d % 10, 'th')
+""" ---------- MESSAGE DETECTIONS ---------- """
 
 
-def custom_strftime(format, t):
-    return t.strftime(format).replace('{S}', str(t.day) + suffix(t.day))
-
-# Listens to incoming messages that contain "hello"
-@app.message("hello")
-def message_hello(message, say):
-    # say() sends a message to the channel where the event was triggered
-    say(
-        blocks=[
-            {
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": f"Hey there <@{message['user']}>!"},
-                "accessory": {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": "Click Me"},
-                    "action_id": "button_click"
-                }
-            }
-        ],
-        text=f"Hey there <@{message['user']}>!",
-        thread_fs=message["ts"]
-    )
-
-
-@app.action("button_click")
-def action_button_click(body, ack, say):
-    # Acknowledge the action
-    ack()
-    say(f"<@{body['user']['id']}> clicked the button", thread_ts=body["event"]["ts"])
-
-
-# Listens to incoming messages that contain "hello"
-# To learn available listener arguments,
-# visit https://slack.dev/bolt-python/api-docs/slack_bolt/kwargs_injection/args.html
-@app.message("test")
-def message_test(message, say):
-    # say() sends a message to the channel where the event was triggered
-    say(f"<@{message['user']}> look I can use emojis too :bonk: :tom-approves:", thread_ts=message["ts"])
-    print(message)
-
+@app.event("message")
+def handle_message_events(body, logger):
+    # print("I detected a message", body)
+    logger.info(body)
 
 @app.message(re.compile("(bonk|Bonk|BONK)"))
 def bonk_someone(message, say):
-    print(message)
+    # find the user to bonk
     bonkers = re.search("\<(.*?)\>", message["text"])
+
+    # if there is one
     if bonkers is not None:
         person_to_bonk = bonkers[0]
-    say(f"BONK {person_to_bonk} :bonk::bonk:", thread_ts=message["ts"])
+        say(f"BONK {person_to_bonk} :bonk::bonk:", thread_ts=message["ts"])
+    else:
+        print("I couldn't work out who to bonk T_T")
 
+
+""" ---------- MESSAGE REACTIONS ---------- """
 
 @app.message(re.compile("(tom|Tom)"))
 def react_with_tom(message, client):
@@ -99,15 +68,14 @@ def gerald(message, client):
     )
 
 
-@app.event("message")
-def handle_message_events(body, logger):
-    print("I detected a message", body)
-    logger.info(body)
-
+""" ---------- WHINETIME ---------- """
 
 @app.view("whinetime-modal")
 def whinetime_submit(ack, body, say, client, logger):
+    # acknowledge the submission
     ack()
+
+    # get the values from the form
     state = body["view"]["state"]["values"]
     location = state["whinetime-location"]["whinetime-location"]["value"]
     date = state["whinetime-date"]["datepicker-action"]["selected_date"]
@@ -115,18 +83,22 @@ def whinetime_submit(ack, body, say, client, logger):
 
     ch_id = find_channel("bot-test")
 
+    # convert the information to a datetime object
     year, month, day = list(map(int, date.split("-")))
     hour, minute = list(map(int, time.split(":")))
     dt = datetime.datetime(year, month, day, hour, minute)
 
+    # format it nicely
     formatted_date = custom_strftime("%A (%B {S}) at %I:%M%p", dt)
 
+    # send out an initial message to tell people the plan and ask for reactions
     say(f"Okay folks, we're good to go! Whinetime will happen on {formatted_date} at {location}. I'll remind you closer to the time but now react to this message with :beers: if you're coming!", channel=ch_id)
 
     # calculate some timestamps in the future (I hope)
     day_before = (dt - datetime.timedelta(days=1)).strftime("%s")
     hour_before = (dt - datetime.timedelta(hours=1)).strftime("%s")
 
+    # attempt to send reminders (using Try because people may be too close to the time)
     try:
         result = client.chat_scheduleMessage(
             channel=ch_id,
@@ -151,6 +123,7 @@ def whinetime_submit(ack, body, say, client, logger):
 
 @app.action("whinetime-open")
 def whinetime_logistics(body, client):
+    # open the modal when someone clicks the button
     client.views_open(trigger_id=body["trigger_id"], view={
         "callback_id": "whinetime-modal",
         "title": {
@@ -240,21 +213,86 @@ def whinetime_logistics(body, client):
     })
 
 
-def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, case_sensitive=False):
-    no_matches = True
+@app.action("whinetime-re-roll")
+def whinetime_re_roll(ack, body, logger):
+    ack()
+    logger.info(body)
+    print(body)
+    start_whinetime_workflow(reroll=True)
 
-    if not case_sensitive:
-        message = message.lower()
 
-    for trigger in triggers:
-        if message.find(trigger) >= 0:
-            no_matches = False
+def start_whinetime_workflow(reroll=False, not_these=[]):
+    ch_id = find_channel("bot-test")
 
-            if isinstance(response, list):
-                response = np.random.choice(response)
-            app.client.chat_postMessage(channel=ch_id, text=response, thread_ts=thread_ts)
-            break
-    return no_matches
+    # get all of the members in the channel
+    members = app.client.conversations_members(channel=ch_id)["members"]
+
+    # choose someone random (but NOT Gerald lol)
+    members = list(set(members) - set([GERALD_ID]) - set(not_these))
+    if members == []:
+        app.client.chat_postMessage(text="""Uh oh, I've tried everyone in the channel and it seems no one is
+                                            free to host!
+                                            :smiling_face_with_tear:""".replace("\n", " "), channel=ch_id)
+    random_member = np.random.choice(members)
+
+    if not reroll:
+        app.client.chat_postMessage(text="""Dumroll please :drum_with_drumsticks:...it's time to pick a
+                                            whinetime host""".replace("\n", " "), channel=ch_id)
+    else:
+        messages = [f"""Not whinetime eh? Are you sure? You could be great, you know, whinetime will help you
+                        on the way to greatness, no doubt about that — no? Well, if you're sure — better
+                        be ~GRYFFINDOR~<@{random_member}>!""",
+                    "Okay let's try that again, your whinetime host will be...:drum_with_drumsticks:",
+                    "Okay let's try that again, your whinetime host will be...:drum_with_drumsticks:",
+                    "Nevermind, let's choose someone else, how about...:drum_with_drumsticks:"]
+        app.client.chat_postMessage(text=np.random.choice(messages).replace("\n", " "), channel=ch_id)
+
+    # post the announcement
+    app.client.chat_postMessage(channel=ch_id, blocks=[
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": f"Whinetime ({datetime.datetime.now().strftime('%d/%m/%y')})",
+                "emoji": True
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"Okay <@{random_member}>, you're the boss, what's the plan?"
+            }
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Setup logistics",
+                        "emoji": True
+                    },
+                    "value": "none",
+                    "action_id": "whinetime-open"
+                },
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Choose someone else!",
+                        "emoji": True
+                    },
+                    "value": ",".join(not_these),
+                    "action_id": "whinetime-re-roll"
+                }
+            ]
+        },
+    ])
+
+
+""" ---------- APP MENTIONS ---------- """
 
 
 @app.event("app_mention")
@@ -269,61 +307,14 @@ def reply_to_mentions(say, body, client):
 
     if body["event"]["text"].find("whinetime") >= 0:
         confused.append(False)
-        ch_id = find_channel("bot-test")
-
-        members = client.conversations_members(channel=ch_id)["members"]
-        random_member = np.random.choice(members)
-        while random_member == GERALD_ID:
-            random_member = np.random.choice(members)
-
-        say("Dumroll please :drum_with_drumsticks:...it's time to pick a whinetime host", channel=ch_id)
-
-        say(blocks=[
-            {
-                "type": "header",
-                "text": {
-                    "type": "plain_text",
-                    "text": f"Whinetime ({datetime.datetime.now().strftime('%d/%m/%y')})",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"Okay <@{random_member}>, you're the boss, what's the plan?"
-                }
-            },
-            {
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Setup logistics",
-                            "emoji": True
-                        },
-                        "value": "none",
-                        "action_id": "whinetime-open"
-                    },
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Choose someone else!",
-                            "emoji": True
-                        },
-                        "value": "none",
-                        "action_id": "whinetime-re-roll"
-                    }
-                ]
-            },
-        ])
+        start_whinetime_workflow()
 
     if not any(confused):
         say("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you want from me :shrug::baby::robot_face:",
             thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
+
+
+""" ---------- EMOJI HANDLING ---------- """
 
 
 @app.event("emoji_changed")
@@ -340,25 +331,97 @@ def new_emoji(body, say):
         say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel=ch_id)
 
 
+""" ---------- HELPER FUNCTIONS ---------- """
+
+
+def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, case_sensitive=False):
+    """Respond to a mention of the app based on certain triggers
+
+    Parameters
+    ----------
+    message : `str`
+        The message that mentioned the app
+    triggers : `list`
+        List of potential triggers
+    response : `list` or `str`
+        Either a list of responses (a random will be chosen) or a single response
+    thread_ts : `float`, optional
+        Timestamp of the thread of the message, by default None
+    ch_id : `str`, optional
+        ID of the channel, by default None
+    case_sensitive : `bool`, optional
+        Whether the triggers are case sensitive, by default False
+
+    Returns
+    -------
+    no_matches : `bool`
+        Whether there were no matches to the trigger or not
+    """
+    # keep track of whether you found a match to a trigger
+    no_matches = True
+
+    # move it all to lower case if you don't care
+    if not case_sensitive:
+        message = message.lower()
+
+    # go through each potential trigger
+    for trigger in triggers:
+        # if you find it in the message
+        if message.find(trigger) >= 0:
+            no_matches = False
+
+            # if the response is a list then pick a random one
+            if isinstance(response, list):
+                response = np.random.choice(response)
+
+            # send a message and break out
+            app.client.chat_postMessage(channel=ch_id, text=response, thread_ts=thread_ts)
+            break
+    return no_matches
+
+
 def find_channel(channel_name):
+    """Find the ID of a slack channel
+
+    Parameters
+    ----------
+    channel_name : `str`
+        Name of the Slack channel
+
+    Returns
+    -------
+    ch_id : `str`
+        ID of the Slack channel
+    """
+    # grab the list of channels
     channels = app.client.conversations_list(exclude_archived=True)
     ch_id = None
+
+    # go through each and find one with the same name
     for channel in channels["channels"]:
         if channel["name"] == channel_name:
+            # save the ID and break
             ch_id = channel["id"]
             break
+
+    # if you didn't find one then send out a warning (who changed the channel name!?)
     if ch_id is None:
-        print(f"Warning couldn't find channel '{channel_name}'")
+        print(f"WARNING: couldn't find channel '{channel_name}'")
     return ch_id
+
+
+def suffix(d):
+    """ Work out what suffix a date needs """
+    return 'th' if 11 <= d <= 13 else {1: 'st',2: 'nd',3: 'rd'}.get(d % 10, 'th')
+
+
+def custom_strftime(format, t):
+    """ Change the default datetime strftime to use the custom suffix """
+    return t.strftime(format).replace('{S}', str(t.day) + suffix(t.day))
 
 
 def scheduled_function():
     print("Test test test")
-
-
-# scheduler = BackgroundScheduler({'apscheduler.timezone': 'UTC'})
-# scheduler.add_job(my_scheduled_job, "cron", day_of_week="mon", hour=16, minute=0)
-# scheduler.start()
 
 scheduler = BackgroundScheduler({'apscheduler.timezone': 'US/Pacific'})
 scheduler.add_job(scheduled_function, "cron", day_of_week="sat", hour=10, minute=25)
