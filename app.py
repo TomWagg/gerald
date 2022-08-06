@@ -1,6 +1,7 @@
 import os
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
+from slack_sdk.errors import SlackApiError
 import re
 import numpy as np
 import datetime
@@ -102,7 +103,7 @@ def handle_message_events(body, logger):
 
 
 @app.view("whinetime-modal")
-def whinetime_submit(ack, body, say, client):
+def whinetime_submit(ack, body, say, client, logger):
     ack()
     state = body["view"]["state"]["values"]
     location = state["whinetime-location"]["whinetime-location"]["value"]
@@ -127,16 +128,31 @@ def whinetime_submit(ack, body, say, client):
 
     say(f"Okay folks, we're good to go! Whinetime will happen on {formatted_date} at {location}. I'll remind you closer to the time but now react to this message with :beers: if you're coming!", channel=ch_id)
 
-    # TODO: REMOVE NEXT LINE
-    dt = datetime.datetime.now()
-    reminder = (dt + datetime.timedelta(seconds=10)).strftime("%s")
-    print(reminder)
-    client.chat_scheduleMessage(
-        channel=ch_id,
-        text="I mean this is technically closer to the time, 10 seconds closer, don't forget about whinetime and hooray for proof of concept!! :tada:",
-        post_at=reminder
-    )
+    # calculate some timestamps in the future (I hope)
+    day_before = (dt - datetime.timedelta(days=1)).strftime("%s")
+    hour_before = (dt - datetime.timedelta(hours=1)).strftime("%s")
 
+    try:
+        result = client.chat_scheduleMessage(
+            channel=ch_id,
+            text="Only one day to go until #whinetime! Don't forget to react to the message above if you're coming",
+            post_at=day_before
+        )
+        logger.info(result)
+
+    except SlackApiError as e:
+        logger.error("Error scheduling message: {}".format(e))
+
+    try:
+        result = client.chat_scheduleMessage(
+            channel=ch_id,
+            text=f"Feeling that Friday afternoon fatigue? You need some #whinetime mate and luckily it's only one hour to go :meowparty::meowparty: Remember it's at {location} this week, hope you guys have fun!",
+            post_at=hour_before
+        )
+        logger.info(result)
+
+    except SlackApiError as e:
+        logger.error("Error scheduling message: {}".format(e))
 
 @app.action("whinetime-open")
 def whinetime_logistics(body, client):
@@ -239,6 +255,14 @@ def reply_to_mentions(say, body, client):
             no_matches = False
             say("Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
                 thread_ts=body["event"]["ts"])
+            break
+
+    thanks = ["thank", "Thank", "THANK"]
+    for thank in thanks
+        if body["event"]["text"].find(thank) > 0:
+            no_matches = False
+            responses = ["You're welcome!", "My pleasure!", "Happy to help!"]
+            say(np.random.choice(responses), thread_ts=body["event"]["ts"])
             break
 
     if body["event"]["text"].find("whinetime") > 0:
