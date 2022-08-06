@@ -113,15 +113,7 @@ def whinetime_submit(ack, body, say, client, logger):
     date = state["whinetime-date"]["datepicker-action"]["selected_date"]
     time = state["whinetime-time"]["timepicker-action"]["selected_time"]
 
-    channels = client.conversations_list(exclude_archived=True)
-    ch_id = None
-    for channel in channels["channels"]:
-        if channel["name"] == "bot-test":
-            ch_id = channel["id"]
-            break
-
-    if ch_id is None:
-        return
+    ch_id = find_channel("bot-test")
 
     year, month, day = list(map(int, date.split("-")))
     hour, minute = list(map(int, time.split(":")))
@@ -270,15 +262,8 @@ def reply_to_mentions(say, body, client):
 
     if body["event"]["text"].find("whinetime") >= 0:
         no_matches = False
-        channels = client.conversations_list(exclude_archived=True)
-        ch_id = None
-        for channel in channels["channels"]:
-            if channel["name"] == "bot-test":
-                ch_id = channel["id"]
-                break
 
-        if ch_id is None:
-            return
+        ch_id = find_channel("bot-test")
 
         members = client.conversations_members(channel=ch_id)["members"]
         random_member = np.random.choice(members)
@@ -344,7 +329,21 @@ def new_emoji(body, say):
                               "Looks like I've found my new favourite",
                               "And that's all the context you're getting"]
         rand_msg = emoji_add_messages[np.random.randint(len(emoji_add_messages))]
-        say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel="C03S53SC1FZ")
+
+        ch_id = find_channel("bot-test")
+        say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel=ch_id)
+
+
+def find_channel(channel_name):
+    channels = app.client.conversations_list(exclude_archived=True)
+    ch_id = None
+    for channel in channels["channels"]:
+        if channel["name"] == channel_name:
+            ch_id = channel["id"]
+            break
+    if ch_id is None:
+        print(f"Warning couldn't find channel '{channel_name}'")
+    return ch_id
 
 
 def scheduled_function():
