@@ -217,11 +217,10 @@ def whinetime_logistics(body, client):
 def whinetime_re_roll(ack, body, logger):
     ack()
     logger.info(body)
-    print(body)
-    start_whinetime_workflow(reroll=True)
+    start_whinetime_workflow(reroll=True, not_these=body["actions"][0]["value"].split(","))
 
 
-def start_whinetime_workflow(reroll=False, not_these=[]):
+def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
     ch_id = find_channel("bot-test")
 
     # get all of the members in the channel
@@ -230,18 +229,19 @@ def start_whinetime_workflow(reroll=False, not_these=[]):
     # choose someone random (but NOT Gerald lol)
     members = list(set(members) - set([GERALD_ID]) - set(not_these))
     if members == []:
-        app.client.chat_postMessage(text="""Uh oh, I've tried everyone in the channel and it seems no one is
-                                            free to host!
-                                            :smiling_face_with_tear:""".replace("\n", " "), channel=ch_id)
+        app.client.chat_postMessage(text=("Uh oh, I've tried everyone in the channel and it seems no one is "
+                                          "free to host! :smiling_face_with_tear:"), channel=ch_id)
+        return
     random_member = np.random.choice(members)
+    not_these.append(random_member)
 
     if not reroll:
-        app.client.chat_postMessage(text="""Dumroll please :drum_with_drumsticks:...it's time to pick a
-                                            whinetime host""".replace("\n", " "), channel=ch_id)
+        app.client.chat_postMessage(text=("Dumroll please :drum_with_drumsticks:...it's time to pick a "
+                                          "whinetime host"), channel=ch_id)
     else:
-        messages = [f"""Not whinetime eh? Are you sure? You could be great, you know, whinetime will help you
-                        on the way to greatness, no doubt about that — no? Well, if you're sure — better
-                        be ~GRYFFINDOR~<@{random_member}>!""",
+        messages = [("Not whinetime eh? Are you sure? You could be great, you know, whinetime will help you "
+                     "on the way to greatness, no doubt about that — no? Well, if you're sure — better "
+                     f"be ~GRYFFINDOR~ <@{random_member}>!"),
                     "Okay let's try that again, your whinetime host will be...:drum_with_drumsticks:",
                     "Okay let's try that again, your whinetime host will be...:drum_with_drumsticks:",
                     "Nevermind, let's choose someone else, how about...:drum_with_drumsticks:"]
