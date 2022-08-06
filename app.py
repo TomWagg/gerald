@@ -147,7 +147,7 @@ def whinetime_logistics(body, client):
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": f"Whinetime ({datetime.datetime.now().strftime('%d/%m/%y')})",
+                    "text": f"Whinetime (Week of {datetime.datetime.now().strftime('%d/%m/%y')})",
                     "emoji": True
                 }
             },
@@ -255,7 +255,7 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
             "type": "header",
             "text": {
                 "type": "plain_text",
-                "text": f"Whinetime ({datetime.datetime.now().strftime('%d/%m/%y')})",
+                "text": f"Whinetime (Week of {datetime.datetime.now().strftime('%d/%m/%y')})",
                 "emoji": True
             }
         },
@@ -320,9 +320,11 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
 def reply_to_mentions(say, body):
     confused = []
     for triggers, response in zip([["status", "okay", "ok", "how are you"],
-                                   ["thank", "you're the best", "nice job", "good work", "good job"]],
+                                   ["thank", "you're the best", "nice job", "good work", "good job"],
+                                   ["celebrate"]],
                                   ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
-                                   ["You're welcome!", "My pleasure!", "Happy to help!"]]):
+                                   ["You're welcome!", "My pleasure!", "Happy to help!"],
+                                   [":tada::meowparty: WOOP WOOP :meowparty::tada:"]]):
         confused.append(mention_trigger(message=body["event"]["text"], triggers=triggers, response=response,
                                         thread_ts=body["event"]["ts"], ch_id=body["event"]["channel"]))
 
@@ -442,12 +444,18 @@ def custom_strftime(format, t):
 
 
 def every_morning():
-    print("Test test test")
+    """ This function runs every morning around 9AM """
+    today = datetime.datetime.now()
+    the_day = today.strftime("%A")
+
+    # if the day is Monday then send out the whinetime reminders
+    if the_day == "Monday":
+        start_whinetime_workflow()
 
 
 # start Gerald
 if __name__ == "__main__":
     scheduler = BackgroundScheduler({'apscheduler.timezone': 'US/Pacific'})
-    scheduler.add_job(every_morning, "cron", day_of_week="sat", hour=10, minute=25)
+    scheduler.add_job(every_morning, "cron", hour=9, minute=32)
     scheduler.start()
     SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
