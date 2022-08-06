@@ -240,29 +240,35 @@ def whinetime_logistics(body, client):
     })
 
 
-@app.event("app_mention")
-def reply_to_mentions(say, body, client):
+def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, case_sensitive=False):
     no_matches = True
 
-    status_checkers = ["status", "okay", "ok"]
-    for match in status_checkers:
-        if body["event"]["text"].find(match) >= 0:
-            no_matches = False
-            say("Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
-                thread_ts=body["event"]["ts"])
-            break
+    if not case_sensitive:
+        message = message.lower()
 
-    thanks = ["thank", "Thank", "THANK"]
-    for thank in thanks:
-        if body["event"]["text"].find(thank) >= 0:
+    for trigger in triggers:
+        if message.find(trigger) >= 0:
             no_matches = False
-            responses = ["You're welcome!", "My pleasure!", "Happy to help!"]
-            say(np.random.choice(responses), thread_ts=body["event"]["ts"])
+
+            if isinstance(response, list):
+                response = np.random.choice(response)
+            app.client.chat_postMessage(channel=ch_id, text=response, thread_ts=thread_ts)
             break
+    return no_matches
+
+
+@app.event("app_mention")
+def reply_to_mentions(say, body, client):
+    confused = []
+    for triggers, response in zip([["status", "okay", "ok", "how are you"],
+                                   ["thank", "you're the best"]],
+                                  ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
+                                   ["You're welcome!", "My pleasure!", "Happy to help!"]]):
+        confused.append(mention_trigger(message=body["event"]["text"], triggers=triggers, response=response,
+                                        thread_ts=body["event"]["ts"], ch_id=body["event"]["channel"]))
 
     if body["event"]["text"].find("whinetime") >= 0:
-        no_matches = False
-
+        confused.append(False)
         ch_id = find_channel("bot-test")
 
         members = client.conversations_members(channel=ch_id)["members"]
@@ -315,9 +321,9 @@ def reply_to_mentions(say, body, client):
             },
         ])
 
-    if no_matches:
+    if not any(confused):
         say("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you want from me :shrug::baby::robot_face:",
-            thread_ts=body["event"]["ts"])
+            thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
 
 
 @app.event("emoji_changed")
