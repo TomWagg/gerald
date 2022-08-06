@@ -23,7 +23,8 @@ def message_hello(message, say):
                 }
             }
         ],
-        text=f"Hey there <@{message['user']}>!"
+        text=f"Hey there <@{message['user']}>!",
+        thread_fs=message["ts"]
     )
 
 
@@ -31,7 +32,7 @@ def message_hello(message, say):
 def action_button_click(body, ack, say):
     # Acknowledge the action
     ack()
-    say(f"<@{body['user']['id']}> clicked the button")
+    say(f"<@{body['user']['id']}> clicked the button", thread_ts=body["event"]["ts"])
 
 
 # Listens to incoming messages that contain "hello"
@@ -40,7 +41,7 @@ def action_button_click(body, ack, say):
 @app.message("test")
 def message_test(message, say):
     # say() sends a message to the channel where the event was triggered
-    say(f"<@{message['user']}> look I can use emojis too :bonk: :tom-approves:")
+    say(f"<@{message['user']}> look I can use emojis too :bonk: :tom-approves:", thread_ts=message["ts"])
     print(message)
 
 
@@ -50,7 +51,7 @@ def bonk_someone(message, say):
     bonkers = re.search("\<(.*?)\>", message["text"])
     if bonkers is not None:
         person_to_bonk = bonkers[0]
-    say(f"BONK {person_to_bonk} :bonk::bonk:")
+    say(f"BONK {person_to_bonk} :bonk::bonk:", thread_ts=message["ts"])
 
 
 @app.message(re.compile("(tom|Tom)"))
@@ -86,11 +87,13 @@ def event_test(say, body):
     for match in status_checkers:
         if body["event"]["text"].find(match) > 0:
             no_matches = False
-            say("Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!")
+            say("Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
+                thread_ts=body["event"]["ts"])
             break
 
     if no_matches:
-        say("Okay I heard you, but I'm also not a very smart bot so I don't know what you want from me")
+        say("Okay I heard you, but I'm also not a very smart bot so I don't know what you want from me",
+            thread_ts=body["event"]["ts"])
 
 
 # Start your app
