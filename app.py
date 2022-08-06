@@ -73,6 +73,20 @@ def no_undergrads(message, client):
     )
 
 
+@app.message("gerald|Gerald")
+def gerald(message, client):
+    client.reactions_add(
+        channel=message["channel"],
+        timestamp=message["ts"],
+        name="gerald"
+    )
+    client.reactions_add(
+        channel=message["channel"],
+        timestamp=message["ts"],
+        name="eyes"
+    )
+
+
 @app.event("message")
 def handle_message_events(body, logger):
     print("I detected a message", body)
