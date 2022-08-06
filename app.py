@@ -20,7 +20,6 @@ GERALD_ID = "U03SY9R6D5X"
 def handle_message_events(body, logger):
     # print("I detected a message", body)
     logger.info(body)
-    get_next_birthday()
 
 
 @app.message(re.compile("(bonk|Bonk|BONK)"))
@@ -315,6 +314,72 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
     ])
 
 
+""" ---------- BIRTHDAYS ---------- """
+
+
+def say_happy_birthday(user_id):
+    gif_id = np.random.randint(0, 7 + 1)
+    gif_url = f"https://raw.githubusercontent.com/TomWagg/gerald/main/img/birthday_gifs/{gif_id}.gif"
+    app.client.chat_postMessage(channel=find_channel("bot-test"),
+                                text=f":birthday: Happy birthday to <@{user_id}>! :birthday:",
+                                blocks=[
+                                    {
+                                        "type": "section",
+                                        "text": {
+                                            "type": "mrkdwn",
+                                            "text": f":birthday: Happy birthday to <@{user_id}>! :birthday:",
+                                        }
+                                    },
+                                    {
+                                        "type": "image",
+                                        "image_url": gif_url,
+                                        "alt_text": "birthday"
+                                    }
+                                ])
+
+
+def is_it_a_birthday():
+    birthday_people, _, closest_time = closest_birthday()
+
+    if birthday_people != [] and closest_time == 0:
+        users = app.client.users_list()["members"]
+        for user in users:
+            for person in birthday_people:
+                if user["name"] == person:
+                    say_happy_birthday(user["id"])
+
+
+def closest_birthday():
+    today = datetime.date.today()
+
+    usernames = []
+    names = []
+    closest_time = np.inf
+
+    with open("data/birthday_phone_list.csv") as birthdays:
+        for grad in birthdays:
+            if grad[0] == "#":
+                continue
+            name, username, _, birthday = grad.split(",")
+            if birthday.rstrip() == "-":
+                continue
+            day, month = map(int, birthday.rstrip().split("/"))
+            if month < today.month or (month == today.month and day < today.day):
+                year = today.year + 1
+            else:
+                year = today.year
+            birthday_dt = datetime.date(year=year, month=month, day=day)
+            days_until = (birthday_dt - today).days
+            if days_until < closest_time:
+                usernames = [username]
+                names = [name]
+                closest_time = days_until
+            elif days_until == closest_time:
+                usernames.append(username)
+                names.append(name)
+    return usernames, names, closest_time
+
+
 """ ---------- APP MENTIONS ---------- """
 
 
@@ -337,6 +402,20 @@ def reply_to_mentions(say, body):
     if body["event"]["text"].find("BIRTHDAY MANUAL") >= 0:
         confused.append(False)
         is_it_a_birthday()
+
+    if (body["event"]["text"].lower().find("next") >= 0 and body["event"]["text"].lower().find("birthday") >= 0):
+        confused.append(False)
+        _, names, closest_time = closest_birthday()
+
+        time_until_str = f"it's in {closest_time} days!" if closest_time != 0 else "it's today :scream:!!"
+
+        if len(names) == 1:
+            say(text=f"The next person to have a person is {names[0]} and " + time_until_str,
+                channel=body["event"]["channel"], thread_ts=body["event"]["ts"])
+        else:
+            message = "The next people to have birthdays are " + " AND ".join(names) + " and "
+            message += time_until_str
+            say(text=message, channel=body["event"]["channel"], thread_ts=body["event"]["ts"])
 
     if not any(confused):
         say("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you want from me :shrug::baby::robot_face:",
@@ -447,45 +526,6 @@ def suffix(d):
 def custom_strftime(format, t):
     """ Change the default datetime strftime to use the custom suffix """
     return t.strftime(format).replace('{S}', str(t.day) + suffix(t.day))
-
-
-def say_happy_birthday(user_id):
-    app.client.chat_postMessage(channel=find_channel("bot-test"),
-                                text=f":birthday: Happy birthday to <@{user_id}>! :birthday:")
-    return
-
-
-def is_it_a_birthday():
-    today = datetime.date.today()
-
-    birthday_people = []
-
-    with open("data/birthday_phone_list.csv") as birthdays:
-        for grad in birthdays:
-            if grad[0] == "#":
-                continue
-            name, username, phone, birthday = grad.split(",")
-            if birthday.rstrip() == "-":
-                continue
-            day, month = map(int, birthday.rstrip().split("/"))
-            if month < today.month:
-                year = today.year + 1
-            else:
-                year = today.year
-            birthday_dt = datetime.date(year=year, month=month, day=day)
-            if (birthday_dt - today).days == 0:
-                birthday_people.append(username)
-
-    if birthday_people != []:
-        users = app.client.users_list()["members"]
-        for user in users:
-            for person in birthday_people:
-                if user["name"] == person:
-                    say_happy_birthday(user["id"])
-
-
-def get_next_birthday():
-    return
 
 
 def every_morning():
