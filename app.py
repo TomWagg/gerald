@@ -2,6 +2,7 @@ import os
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import re
+import numpy as np
 
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
@@ -74,13 +75,12 @@ def no_undergrads(message, client):
 
 @app.event("message")
 def handle_message_events(body, logger):
-    print("SOMETHING", body)
+    print("I detected a message", body)
     logger.info(body)
 
 
-# Events API: https://api.slack.com/events-api
 @app.event("app_mention")
-def event_test(say, body):
+def reply_to_mentions(say, body):
     no_matches = True
 
     status_checkers = ["status", "okay", "ok"]
@@ -94,6 +94,18 @@ def event_test(say, body):
     if no_matches:
         say("Okay I heard you, but I'm also not a very smart bot so I don't know what you want from me",
             thread_ts=body["event"]["ts"])
+
+
+@app.event("emoji_changed")
+def new_emoji(body, say):
+    if body["event"]["subtype"] == "add":
+        emoji_add_messages = ["I'd love to know the backstory on that one",
+                              "Anyone want to explain this??",
+                              "Feel free to put it to use on this message",
+                              "Looks like I've found my new favourite",
+                              "And that's all the context you're getting"]
+        rand_msg = emoji_add_messages[np.random.randint(len(emoji_add_messages))]
+        say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel="C03S53SC1FZ")
 
 
 # Start your app
