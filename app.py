@@ -251,7 +251,7 @@ def reply_to_mentions(say, body, client):
 
     status_checkers = ["status", "okay", "ok"]
     for match in status_checkers:
-        if body["event"]["text"].find(match) > 0:
+        if body["event"]["text"].find(match) >= 0:
             no_matches = False
             say("Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
                 thread_ts=body["event"]["ts"])
@@ -259,13 +259,13 @@ def reply_to_mentions(say, body, client):
 
     thanks = ["thank", "Thank", "THANK"]
     for thank in thanks:
-        if body["event"]["text"].find(thank) > 0:
+        if body["event"]["text"].find(thank) >= 0:
             no_matches = False
             responses = ["You're welcome!", "My pleasure!", "Happy to help!"]
             say(np.random.choice(responses), thread_ts=body["event"]["ts"])
             break
 
-    if body["event"]["text"].find("whinetime") > 0:
+    if body["event"]["text"].find("whinetime") >= 0:
         no_matches = False
         channels = client.conversations_list(exclude_archived=True)
         ch_id = None
@@ -328,7 +328,7 @@ def reply_to_mentions(say, body, client):
         ])
 
     if no_matches:
-        say("Okay I heard you, but I'm also not a very smart bot so I don't know what you want from me",
+        say("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you want from me :shrug::baby::robot_face:",
             thread_ts=body["event"]["ts"])
 
 
