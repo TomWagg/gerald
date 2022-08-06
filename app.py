@@ -3,10 +3,18 @@ from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 import re
 import numpy as np
+import datetime
 
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
+GERALD_ID = "U03SY9R6D5X"
 
+
+def suffix(d):
+    return 'th' if 11<=d<=13 else {1:'st',2:'nd',3:'rd'}.get(d%10, 'th')
+
+def custom_strftime(format, t):
+    return t.strftime(format).replace('{S}', str(t.day) + suffix(t.day))
 
 # Listens to incoming messages that contain "hello"
 @app.message("hello")
@@ -93,8 +101,126 @@ def handle_message_events(body, logger):
     logger.info(body)
 
 
+@app.view("whinetime-modal")
+def whinetime_submit(ack, body, say, client):
+    ack()
+    state = body["view"]["state"]["values"]
+    location = state["whinetime-location"]["whinetime-location"]["value"]
+    date = state["whinetime-date"]["datepicker-action"]["selected_date"]
+    time = state["whinetime-time"]["timepicker-action"]["selected_time"]
+
+    channels = client.conversations_list(exclude_archived=True)
+    ch_id = None
+    for channel in channels["channels"]:
+        if channel["name"] == "bot-test":
+            ch_id = channel["id"]
+            break
+
+    if ch_id is None:
+        return
+
+    year, month, day = list(map(int, date.split("-")))
+    hour, minute = list(map(int, time.split(":")))
+    dt = datetime.datetime(year, month, day, hour, minute)
+
+    formatted_date = custom_strftime("%A (%B {S}) at %I:%M%p", dt)
+
+    say(f"Okay folks, we're good to go! Whinetime will happen on {formatted_date} at {location}. I'll remind you closer to the time but now react to this message with :beers: if you're coming!", channel=ch_id)
+
+
+@app.action("whinetime-open")
+def whinetime_logistics(body, client):
+    client.views_open(trigger_id=body["trigger_id"], view={
+        "callback_id": "whinetime-modal",
+        "title": {
+            "type": "plain_text",
+            "text": "Whinetime logistics",
+            "emoji": True
+        },
+        "submit": {
+            "type": "plain_text",
+            "text": "Submit",
+            "emoji": True
+        },
+        "type": "modal",
+        "close": {
+            "type": "plain_text",
+            "text": "Cancel",
+            "emoji": True
+        },
+        "blocks": [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": f"Whinetime ({datetime.datetime.now().strftime('%d/%m/%y')})",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "Okay you're the boss, what's the plan? Let me know and I'll send reminders out for whinetime!"
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "whinetime-location",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "whinetime-location"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Where shall we go?",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "whinetime-date",
+                "element": {
+                    "type": "datepicker",
+                    "initial_date": "2022-08-05",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select a date",
+                        "emoji": True
+                    },
+                    "action_id": "datepicker-action"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Which day?",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "whinetime-time",
+                "element": {
+                    "type": "timepicker",
+                    "initial_time": "17:00",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select time",
+                        "emoji": True
+                    },
+                    "action_id": "timepicker-action"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "What time?",
+                    "emoji": True
+                }
+            }
+        ]
+    })
+
+
 @app.event("app_mention")
-def reply_to_mentions(say, body):
+def reply_to_mentions(say, body, client):
     no_matches = True
 
     status_checkers = ["status", "okay", "ok"]
@@ -104,6 +230,68 @@ def reply_to_mentions(say, body):
             say("Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
                 thread_ts=body["event"]["ts"])
             break
+
+    if body["event"]["text"].find("whinetime") > 0:
+        no_matches = False
+        channels = client.conversations_list(exclude_archived=True)
+        ch_id = None
+        for channel in channels["channels"]:
+            if channel["name"] == "bot-test":
+                ch_id = channel["id"]
+                break
+
+        if ch_id is None:
+            return
+
+        members = client.conversations_members(channel=ch_id)["members"]
+        random_member = np.random.choice(members)
+        while random_member == GERALD_ID:
+            random_member = np.random.choice(members)
+
+        say("Dumroll please :drum_with_drumsticks:...it's time to pick a whinetime host", channel=ch_id)
+
+        say(blocks=[
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": "Whinetime (05/08/22)",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"Okay <@{random_member}>, you're the boss, what's the plan?"
+                }
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Setup logistics",
+                            "emoji": True
+                        },
+                        "value": "none",
+                        "action_id": "whinetime-open"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Choose someone else!",
+                            "emoji": True
+                        },
+                        "value": "none",
+                        "action_id": "whinetime-re-roll"
+                    }
+                ]
+            },
+        ])
 
     if no_matches:
         say("Okay I heard you, but I'm also not a very smart bot so I don't know what you want from me",
