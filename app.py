@@ -127,6 +127,16 @@ def whinetime_submit(ack, body, say, client):
 
     say(f"Okay folks, we're good to go! Whinetime will happen on {formatted_date} at {location}. I'll remind you closer to the time but now react to this message with :beers: if you're coming!", channel=ch_id)
 
+    # TODO: REMOVE NEXT LINE
+    dt = datetime.datetime.now()
+    reminder = (dt + datetime.timedelta(seconds=10)).strftime("%s")
+    print(reminder)
+    client.chat_scheduleMessage(
+        channel=ch_id,
+        text="I mean this is technically closer to the time, 10 seconds closer, don't forget about whinetime and hooray for proof of concept!! :tada:",
+        post_at=reminder
+    )
+
 
 @app.action("whinetime-open")
 def whinetime_logistics(body, client):
@@ -255,7 +265,7 @@ def reply_to_mentions(say, body, client):
                 "type": "header",
                 "text": {
                     "type": "plain_text",
-                    "text": "Whinetime (05/08/22)",
+                    "text": f"Whinetime ({datetime.datetime.now().strftime('%d/%m/%y')})",
                     "emoji": True
                 }
             },
@@ -310,6 +320,6 @@ def new_emoji(body, say):
         say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel="C03S53SC1FZ")
 
 
-# Start your app
+# start Gerald
 if __name__ == "__main__":
     SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
