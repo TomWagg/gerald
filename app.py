@@ -6,6 +6,11 @@ import re
 import numpy as np
 import datetime
 
+from apscheduler.schedulers.background import BackgroundScheduler
+
+def my_scheduled_job():
+    do_something_here()
+
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 GERALD_ID = "U03SY9R6D5X"
@@ -345,6 +350,19 @@ def new_emoji(body, say):
         say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel="C03S53SC1FZ")
 
 
+def scheduled_function():
+    print("Test test test")
+
+
+# scheduler = BackgroundScheduler({'apscheduler.timezone': 'UTC'})
+# scheduler.add_job(my_scheduled_job, "cron", day_of_week="mon", hour=16, minute=0)
+# scheduler.start()
+
+scheduler = BackgroundScheduler({'apscheduler.timezone': 'UTC'})
+scheduler.add_job(scheduled_function, "interval", seconds=5)
+
+
 # start Gerald
 if __name__ == "__main__":
+    scheduler.start()
     SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
