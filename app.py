@@ -258,7 +258,7 @@ def reply_to_mentions(say, body, client):
             break
 
     thanks = ["thank", "Thank", "THANK"]
-    for thank in thanks
+    for thank in thanks:
         if body["event"]["text"].find(thank) > 0:
             no_matches = False
             responses = ["You're welcome!", "My pleasure!", "Happy to help!"]
