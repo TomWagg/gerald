@@ -8,9 +8,6 @@ import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-def my_scheduled_job():
-    do_something_here()
-
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 GERALD_ID = "U03SY9R6D5X"
@@ -358,8 +355,9 @@ def scheduled_function():
 # scheduler.add_job(my_scheduled_job, "cron", day_of_week="mon", hour=16, minute=0)
 # scheduler.start()
 
-scheduler = BackgroundScheduler({'apscheduler.timezone': 'UTC'})
-scheduler.add_job(scheduled_function, "interval", seconds=5)
+scheduler = BackgroundScheduler({'apscheduler.timezone': 'US/Pacific'})
+scheduler.add_job(scheduled_function, "cron", day_of_week="sat", hour=10, minute=25)
+# scheduler.add_job(scheduled_function, "interval", seconds=5)
 
 
 # start Gerald
