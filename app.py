@@ -338,6 +338,22 @@ def say_happy_birthday(user_id):
                                 ])
 
 
+def get_all_birthdays():
+    info = []
+    with open("data/birthday_phone_list.csv") as birthday_file:
+        for grad in birthday_file:
+            if grad[0] == "#":
+                continue
+            name, _, _, birthday = grad.split(",")
+            if birthday.rstrip() == "-":
+                info.append((name, None))
+            else:
+                day, month = map(int, birthday.rstrip().split("/"))
+                birthday_dt = datetime.date(year=2022, month=month, day=day)
+                info.append((name, custom_strftime("%B {S}", birthday_dt)))
+    return info
+
+
 def is_it_a_birthday():
     birthday_people, _, closest_time = closest_birthday()
 
@@ -385,26 +401,22 @@ def closest_birthday():
 
 @app.event("app_mention")
 def reply_to_mentions(say, body):
-    confused = []
     for triggers, response in zip([["status", "okay", "ok", "how are you"],
                                    ["thank", "you're the best", "nice job", "good work", "good job"],
                                    ["celebrate"]],
                                   ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
                                    ["You're welcome!", "My pleasure!", "Happy to help!"],
                                    [":tada::meowparty: WOOP WOOP :meowparty::tada:"]]):
-        confused.append(mention_trigger(message=body["event"]["text"], triggers=triggers, response=response,
-                                        thread_ts=body["event"]["ts"], ch_id=body["event"]["channel"]))
+        did_not_reply = mention_trigger(message=body["event"]["text"], triggers=triggers, response=response,
+                                        thread_ts=body["event"]["ts"], ch_id=body["event"]["channel"])
+        if not did_not_reply:
+            return
 
     if body["event"]["text"].find("WHINETIME MANUAL") >= 0:
-        confused.append(False)
         start_whinetime_workflow()
-
-    if body["event"]["text"].find("BIRTHDAY MANUAL") >= 0:
-        confused.append(False)
+    elif body["event"]["text"].find("BIRTHDAY MANUAL") >= 0:
         is_it_a_birthday()
-
-    if (body["event"]["text"].lower().find("next") >= 0 and body["event"]["text"].lower().find("birthday") >= 0):
-        confused.append(False)
+    elif (body["event"]["text"].lower().find("next") >= 0 and body["event"]["text"].lower().find("birthday") >= 0):
         _, names, closest_time = closest_birthday()
 
         time_until_str = f"it's in {closest_time} days!" if closest_time != 0 else "it's today :scream:!!"
@@ -416,9 +428,27 @@ def reply_to_mentions(say, body):
             message = "The next people to have birthdays are " + " AND ".join(names) + " and "
             message += time_until_str
             say(text=message, channel=body["event"]["channel"], thread_ts=body["event"]["ts"])
+    elif ((body["event"]["text"].lower().find("everyone") >= 0
+           or body["event"]["text"].lower().find("all") >= 0)
+          and body["event"]["text"].lower().find("birthday") >= 0):
+        info = get_all_birthdays()
 
-    if not any(confused):
-        say("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you want from me :shrug::baby::robot_face:",
+        unknowns = ""
+        knowns = ""
+
+        for name, birthday in info:
+            if birthday is None:
+                unknowns += f"• {name}\n"
+            else:
+                knowns += f"• {name} - {birthday}\n"
+
+        message = ":birthday: Here's a list of birthdays that I know\n" + knowns
+        message += "\n:question: And here's a list of people I know but whose birthdays I don't\n" + unknowns
+
+        say(text=message.rstrip(), channel=body["event"]["channel"], thread_ts=body["event"]["ts"])
+    else:
+        say(text=("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you"
+                  "want from me :shrug::baby::robot_face:"),
             thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
 
 
@@ -536,6 +566,8 @@ def every_morning():
     # if the day is Monday then send out the whinetime reminders
     if the_day == "Monday":
         start_whinetime_workflow()
+
+    is_it_a_birthday()
 
 
 # start Gerald
