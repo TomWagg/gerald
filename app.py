@@ -217,6 +217,7 @@ def whinetime_logistics(body, client):
 def whinetime_re_roll(ack, body, logger):
     ack()
     logger.info(body)
+    app.client.chat_delete(channel=body["container"]["channel_id"], ts=body["container"]["message_ts"])
     start_whinetime_workflow(reroll=True, not_these=body["actions"][0]["value"].split(","))
 
 
@@ -232,6 +233,7 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
         app.client.chat_postMessage(text=("Uh oh, I've tried everyone in the channel and it seems no one is "
                                           "free to host! :smiling_face_with_tear:"), channel=ch_id)
         return
+
     random_member = np.random.choice(members)
     not_these.append(random_member)
 
@@ -324,7 +326,7 @@ def reply_to_mentions(say, body):
         confused.append(mention_trigger(message=body["event"]["text"], triggers=triggers, response=response,
                                         thread_ts=body["event"]["ts"], ch_id=body["event"]["channel"]))
 
-    if body["event"]["text"].find("whinetime") >= 0:
+    if body["event"]["text"].find("WHINETIME MANUAL") >= 0:
         confused.append(False)
         start_whinetime_workflow()
 
