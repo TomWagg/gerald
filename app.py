@@ -20,6 +20,8 @@ GERALD_ID = "U03SY9R6D5X"
 def handle_message_events(body, logger):
     # print("I detected a message", body)
     logger.info(body)
+    get_next_birthday()
+
 
 @app.message(re.compile("(bonk|Bonk|BONK)"))
 def bonk_someone(message, say):
@@ -332,6 +334,10 @@ def reply_to_mentions(say, body):
         confused.append(False)
         start_whinetime_workflow()
 
+    if body["event"]["text"].find("BIRTHDAY MANUAL") >= 0:
+        confused.append(False)
+        is_it_a_birthday()
+
     if not any(confused):
         say("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you want from me :shrug::baby::robot_face:",
             thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
@@ -441,6 +447,45 @@ def suffix(d):
 def custom_strftime(format, t):
     """ Change the default datetime strftime to use the custom suffix """
     return t.strftime(format).replace('{S}', str(t.day) + suffix(t.day))
+
+
+def say_happy_birthday(user_id):
+    app.client.chat_postMessage(channel=find_channel("bot-test"),
+                                text=f":birthday: Happy birthday to <@{user_id}>! :birthday:")
+    return
+
+
+def is_it_a_birthday():
+    today = datetime.date.today()
+
+    birthday_people = []
+
+    with open("data/birthday_phone_list.csv") as birthdays:
+        for grad in birthdays:
+            if grad[0] == "#":
+                continue
+            name, username, phone, birthday = grad.split(",")
+            if birthday.rstrip() == "-":
+                continue
+            day, month = map(int, birthday.rstrip().split("/"))
+            if month < today.month:
+                year = today.year + 1
+            else:
+                year = today.year
+            birthday_dt = datetime.date(year=year, month=month, day=day)
+            if (birthday_dt - today).days == 0:
+                birthday_people.append(username)
+
+    if birthday_people != []:
+        users = app.client.users_list()["members"]
+        for user in users:
+            for person in birthday_people:
+                if user["name"] == person:
+                    say_happy_birthday(user["id"])
+
+
+def get_next_birthday():
+    return
 
 
 def every_morning():
