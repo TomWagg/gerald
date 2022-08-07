@@ -389,6 +389,25 @@ def get_all_birthdays():
     return info
 
 
+def list_birthdays(message):
+    info = get_all_birthdays()
+
+    unknowns = ""
+    knowns = ""
+
+    for name, birthday in info:
+        if birthday is None:
+            unknowns += f"• {name}\n"
+        else:
+            knowns += f"• {name} - {birthday}\n"
+
+    birthday_list = ":birthday: Here's a list of birthdays that I know\n" + knowns
+    birthday_list += "\n:question: And here's a list of people I know but whose birthdays I don't\n" + unknowns
+
+    app.client.chat_postMessage(text=birthday_list.rstrip(), channel=message["channel"],
+                                thread_ts=message["ts"])
+
+
 def is_it_a_birthday():
     """ Check if today is someone's birthday! """
     # find the closest birthday
@@ -403,6 +422,8 @@ def is_it_a_birthday():
                 # say happy birthday to each person (handle if there are more than one)
                 if user["name"] == person:
                     say_happy_birthday(user["id"])
+    else:
+        print("No birthdays today!")
 
 
 def closest_birthday():
@@ -448,11 +469,27 @@ def closest_birthday():
     return usernames, names, closest_time
 
 
+def reply_closest_birthday(message):
+    _, names, closest_time = closest_birthday()
+
+    time_until_str = f"it's in {closest_time} days!" if closest_time != 0 else "it's today :scream:!!"
+
+    if len(names) == 1:
+        reply = f"The next person to have a birthday is {names[0]} and "
+        reply += time_until_str
+        app.client.chat_postMessage(text=reply, channel=message["channel"], thread_ts=message["ts"])
+    else:
+        reply = "The next people to have birthdays are " + " AND ".join(names) + " and "
+        reply += time_until_str
+        app.client.chat_postMessage(text=reply, channel=message["channel"], thread_ts=message["ts"])
+
+
 """ ---------- APP MENTIONS ---------- """
 
 
 @app.event("app_mention")
 def reply_to_mentions(say, body):
+    message = body["event"]
     # reply to mentions with specific messages
     for triggers, response in zip([["status", "okay", "ok", "how are you"],
                                    ["thank", "you're the best", "nice job", "good work", "good job"],
@@ -460,51 +497,41 @@ def reply_to_mentions(say, body):
                                   ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
                                    ["You're welcome!", "My pleasure!", "Happy to help!"],
                                    [":tada::meowparty: WOOP WOOP :meowparty::tada:"]]):
-        did_not_reply = mention_trigger(message=body["event"]["text"], triggers=triggers, response=response,
-                                        thread_ts=body["event"]["ts"], ch_id=body["event"]["channel"])
-        if not did_not_reply:
+        replied = mention_trigger(message=message["text"], triggers=triggers, response=response,
+                                  thread_ts=message["ts"], ch_id=message["channel"])
+        if replied:
             return
 
-    # set up some manual checks
-    # TODO: functionise this
-    if body["event"]["text"].find("WHINETIME MANUAL") >= 0:
-        start_whinetime_workflow()
-    elif body["event"]["text"].find("BIRTHDAY MANUAL") >= 0:
-        is_it_a_birthday()
-    elif (body["event"]["text"].lower().find("next") >= 0 and body["event"]["text"].lower().find("birthday") >= 0):
-        _, names, closest_time = closest_birthday()
+    for regex, action, case, pass_message in zip([r"\bBIRTHDAY MANUAL\b",
+                                                  r"\bWHINETIME MANUAL\b",
+                                                  r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
+                                                  r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)"],
+                                                 [is_it_a_birthday,
+                                                  start_whinetime_workflow,
+                                                  reply_closest_birthday,
+                                                  list_birthdays],
+                                                 [False, False, False, False],
+                                                 [False, False, True, True]):
+        replied = mention_action(message=message, regex=regex, action=action,
+                                 case_sensitive=case, pass_message=pass_message)
+        if replied:
+            return
 
-        time_until_str = f"it's in {closest_time} days!" if closest_time != 0 else "it's today :scream:!!"
+    say(text=("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you "
+              "want from me :shrug::baby::robot_face:"),
+        thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
 
-        if len(names) == 1:
-            say(text=f"The next person to have a birthday is {names[0]} and " + time_until_str,
-                channel=body["event"]["channel"], thread_ts=body["event"]["ts"])
+
+def mention_action(message, regex, action, case_sensitive=False, pass_message=True):
+    flags = None if case_sensitive else re.IGNORECASE
+    if re.search(regex, message["text"], flags=flags):
+        if pass_message:
+            action(message)
         else:
-            message = "The next people to have birthdays are " + " AND ".join(names) + " and "
-            message += time_until_str
-            say(text=message, channel=body["event"]["channel"], thread_ts=body["event"]["ts"])
-    elif ((body["event"]["text"].lower().find("everyone") >= 0
-           or body["event"]["text"].lower().find("all") >= 0)
-          and body["event"]["text"].lower().find("birthday") >= 0):
-        info = get_all_birthdays()
-
-        unknowns = ""
-        knowns = ""
-
-        for name, birthday in info:
-            if birthday is None:
-                unknowns += f"• {name}\n"
-            else:
-                knowns += f"• {name} - {birthday}\n"
-
-        message = ":birthday: Here's a list of birthdays that I know\n" + knowns
-        message += "\n:question: And here's a list of people I know but whose birthdays I don't\n" + unknowns
-
-        say(text=message.rstrip(), channel=body["event"]["channel"], thread_ts=body["event"]["ts"])
+            action()
+        return True
     else:
-        say(text=("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you"
-                  "want from me :shrug::baby::robot_face:"),
-            thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
+        return False
 
 
 def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, case_sensitive=False):
@@ -531,7 +558,7 @@ def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, cas
         Whether there were no matches to the trigger or not
     """
     # keep track of whether you found a match to a trigger
-    no_matches = True
+    matched = False
 
     # move it all to lower case if you don't care
     if not case_sensitive:
@@ -541,7 +568,7 @@ def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, cas
     for trigger in triggers:
         # if you find it in the message
         if message.find(trigger) >= 0:
-            no_matches = False
+            matched = True
 
             # if the response is a list then pick a random one
             if isinstance(response, list):
@@ -550,7 +577,7 @@ def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, cas
             # send a message and break out
             app.client.chat_postMessage(channel=ch_id, text=response, thread_ts=thread_ts)
             break
-    return no_matches
+    return matched
 
 
 """ ---------- EMOJI HANDLING ---------- """
