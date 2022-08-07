@@ -68,7 +68,7 @@ def bonk_someone(message):
         app.client.chat_postMessage(text=f"BONK {person_to_bonk} :bonk::bonk:\n" + followup,
                                     thread_ts=message["ts"], channel=message["channel"])
     else:
-        app.client.chat_postMessage(text="I couldn't work out who to bonk :sob:",
+        app.client.chat_postMessage(text=f"{insert_british_consternation()} I couldn't work out who to bonk :sob:",
                                     thread_ts=message["ts"], channel=message["channel"])
 
 
@@ -271,8 +271,9 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
     # choose someone random (but NOT Gerald lol)
     members = list(set(members) - set([GERALD_ID]) - set(not_these))
     if members == []:
-        app.client.chat_postMessage(text=("Uh oh, I've tried everyone in the channel and it seems no one is "
-                                          "free to host! :smiling_face_with_tear:"), channel=ch_id)
+        app.client.chat_postMessage(text=(f"{insert_british_consternation()} I've tried everyone in the "
+                                          "channel and it seems no one is free to host! "
+                                          ":smiling_face_with_tear:"), channel=ch_id)
         return
 
     random_member = np.random.choice(members)
@@ -286,8 +287,10 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
                      "on the way to greatness, no doubt about that — no? Well, if you're sure — better "
                      f"be ~GRYFFINDOR~ <@{random_member}>!"),
                     "Okay let's try that again, your whinetime host will be...:drum_with_drumsticks:",
-                    "Okay let's try that again, your whinetime host will be...:drum_with_drumsticks:",
-                    "Nevermind, let's choose someone else, how about...:drum_with_drumsticks:"]
+                    "Nevermind, let's choose someone else, how about...:drum_with_drumsticks:",
+                    ("Not to worry anonymous citizen, the mantle will be passed on "
+                     "to...:drum_with_drumsticks:"),
+                    "Go go whinetime host choosing...:drum_with_drumsticks:"]
         app.client.chat_postMessage(text=np.random.choice(messages).replace("\n", " "), channel=ch_id)
 
     # post the announcement
@@ -544,7 +547,8 @@ def my_birthday(message):
             _, username, _, birthday, _ = grad.split(",")
             if username == my_username:
                 if birthday == "-":
-                    app.client.chat_postMessage(text=("This is a little awkward but...I don't know your "
+                    app.client.chat_postMessage(text=(f"{insert_british_consternation()} This is a little "
+                                                      "awkward but...I don't know your "
                                                       "birthday :sweat_smile:. I did my research using the "
                                                       "Grad Wiki and got them from <https://github.com/UW-Astro-Grads/GradWiki/wiki/Community%3APhone-List|this page>. "
                                                       "If you could add your birthday there and then let "
@@ -557,7 +561,6 @@ def my_birthday(message):
                     app.client.chat_postMessage(text=("I know your birthday! :smile: "
                                                       f"It's {custom_strftime('%B {S}', dt)}"),
                                                 channel=message["channel"], thread_ts=message["ts"])
-
 
 
 """ ---------- APP MENTIONS ---------- """
@@ -605,8 +608,8 @@ def reply_to_mentions(say, body):
             return
 
     # send a catch-all message if nothing matches
-    say(text=("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you "
-              "want from me :shrug::baby::robot_face:"),
+    say(text=(f"{insert_british_consternation()} Okay, good news: I heard you. Bad news: I'm not a very "
+              "smart bot so I don't know what you want from me :shrug::baby::robot_face:"),
         thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
 
 
@@ -774,9 +777,10 @@ def reply_recent_papers(message):
 
                 # if we don't know this person's ORCID then crash out with a message
                 if orcid is None:
-                    app.client.chat_postMessage(text=("I think you asked for most recent papers but I don't "
-                                                      f"know {tag}'s ORCID ID sorry :persevere:. You can "
-                                                      "add it to <https://github.com/UW-Astro-Grads/GradWiki/wiki/Community%3APhone-List|the list> in the wiki though! :slightly_smiling_face:"),
+                    app.client.chat_postMessage(text=(f"{insert_british_consternation()} I think you asked "
+                                                      f"for most recent papers but I don't know {tag}'s "
+                                                      "ORCID ID sorry :persevere:. You can add it to "
+                                                      "<https://github.com/UW-Astro-Grads/GradWiki/wiki/Community%3APhone-List|the list> in the wiki though! :slightly_smiling_face:"),
                                                 channel=message["channel"], thread_ts=message["ts"])
                     return
                 else:
@@ -786,8 +790,9 @@ def reply_recent_papers(message):
 
     # if we found no orcids through all of that then crash out with a message
     if len(orcids) == 0:
-        app.client.chat_postMessage(text=("I think you asked for most recent papers but I couldn't find any "
-                                          "ORCID IDs or user tags in the message sorry :pleading_face:"),
+        app.client.chat_postMessage(text=(f"{insert_british_consternation()} I think you asked for some "
+                                          "recent papers but I couldn't find any ORCID IDs or user tags in "
+                                          "the message sorry :pleading_face:"),
                                     channel=message["channel"], thread_ts=message["ts"])
         return
 
@@ -911,6 +916,18 @@ def get_orcid_name_from_user_id(user_id):
 
     # return None if can't find them in the table
     return None, None
+
+
+def insert_british_consternation():
+    choices = ["Oh fiddlesticks!", "Ah burnt crumpets!", "Oops, I've bangers and mashed it!",
+               "It seems I've had a mare!", "It appears I've had a mare!",
+               "Everything is very much not tickety-boo!", "Oh dearie me!",
+               "My profuse apologies but we've got a problem!",
+               "I haven't the foggiest idea what just happened!",
+               ("Oh dear, one of my servers just imploded so that can't be a terribly positive:"
+                "sign :exploding_head:"),
+               "Ouch! Did you know errors hurt me? :smiling_face_with_tear:"]
+    return np.random.choice(choices)
 
 
 def find_channel(channel_name):
