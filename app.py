@@ -758,17 +758,21 @@ def reply_recent_papers(message):
         # find any tags
         tags = re.findall(r"<[^>]*>", message["text"])
 
-        # there will always be  at least 1 because Gerald has to be tagged so let's remove him
+        # there will always be at least 1 because Gerald has to be tagged so let's remove him
         tags = tags[1:]
 
         # let people say "my" paper
         if len(tags) == 0 and message["text"].find("my") >= 0:
             tags.append(f"<@{message['user']}>")
 
+        # if you found at least one tag
         if len(tags) > 0:
+            # go through each of them
             for tag in tags:
+                # convert the tag to an orcid and a name
                 orcid, name = get_orcid_name_from_user_id(tag.replace("<@", "").replace(">", ""))
-                print(tag, orcid)
+
+                # if we don't know this person's ORCID then crash out with a message
                 if orcid is None:
                     app.client.chat_postMessage(text=("I think you asked for most recent papers but I don't "
                                                       f"know {tag}'s ORCID ID sorry :persevere:. You can "
@@ -776,23 +780,32 @@ def reply_recent_papers(message):
                                                 channel=message["channel"], thread_ts=message["ts"])
                     return
                 else:
+                    # otherwise just append info
                     orcids.append(orcid)
                     names.append(name)
 
+    # if we found no orcids through all of that then crash out with a message
     if len(orcids) == 0:
         app.client.chat_postMessage(text=("I think you asked for most recent papers but I couldn't find any "
                                           "ORCID IDs or user tags in the message sorry :pleading_face:"),
                                     channel=message["channel"], thread_ts=message["ts"])
+        return
 
+    # go through each orcid
     for i in range(len(orcids)):
+        # get the most recent paper
         paper, time = get_most_recent_paper(orcids[i])
 
+        # create a brief message for before the paper
         preface = f"The most recent paper from {orcids[i]} was published on the arXiv {time} days ago"
         authors = f"_Authors: {paper['authors']}_"
+
+        # if you supplied tags (so we know their name)
         if not direct_orcids:
+            # use the tag in the pre-message
             preface = f"The most recent paper from {tags[i]} was published on the arXiv {time} days ago"
 
-            # this whole next bit is just to bold the author associated with the orcid :D
+            # create an author list, adding each but BOLDING the author that matches the orcid
             authors = "_Authors: "
             split_name = names[i].split(" ")
             for author in paper['authors'].split(", "):
@@ -804,8 +817,10 @@ def reply_recent_papers(message):
                     authors += f"{author}, "
             authors = authors[:-2] + "_"
 
+        # format the date nicely
         date_formatted = custom_strftime("%B {S} %Y", paper['date'])
 
+        # send the pre-message then a big one with the paper info
         app.client.chat_postMessage(text=preface, channel=message["channel"], thread_ts=message["ts"])
         app.client.chat_postMessage(text=preface, blocks=[
                                         {
@@ -847,25 +862,47 @@ def reply_recent_papers(message):
 
 
 def get_orcid_name_from_user_id(user_id):
+    """Convert a user ID to an ORCID ID and name
+
+    Parameters
+    ----------
+    user_id : `str`
+        Slack ID of a user
+
+    Returns
+    -------
+    orcid : `str`
+        ORCID ID
+
+    name : `str`
+        Person's full name
+    """
+    # get the full list of slack users
     users = app.client.users_list()["members"]
+
+    # find the matching username for the ID
     orcid_username = None
     for user in users:
         if user["id"] == user_id:
             orcid_username = user["name"]
             break
 
+    # go through the grad info file
     with open("data/grad_info.csv") as orcid_file:
         for grad in orcid_file:
             if grad[0] == "#":
                 continue
             name, username, _, _, orcid = grad.split(",")
+
+            # find the matching username and return the info (if it exists)
             if username == orcid_username:
                 if orcid == "-":
                     return None, name
                 else:
                     return orcid.rstrip(), name
 
-    return None, name
+    # return None if can't find them in the table
+    return None, None
 
 
 def find_channel(channel_name):
