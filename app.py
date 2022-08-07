@@ -453,6 +453,7 @@ def closest_birthday():
 
 @app.event("app_mention")
 def reply_to_mentions(say, body):
+    # reply to mentions with specific messages
     for triggers, response in zip([["status", "okay", "ok", "how are you"],
                                    ["thank", "you're the best", "nice job", "good work", "good job"],
                                    ["celebrate"]],
@@ -464,6 +465,8 @@ def reply_to_mentions(say, body):
         if not did_not_reply:
             return
 
+    # set up some manual checks
+    # TODO: functionise this
     if body["event"]["text"].find("WHINETIME MANUAL") >= 0:
         start_whinetime_workflow()
     elif body["event"]["text"].find("BIRTHDAY MANUAL") >= 0:
