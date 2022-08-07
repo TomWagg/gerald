@@ -8,6 +8,8 @@ import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
+from arxiv import get_most_recent_paper, get_papers_by_orcid
+
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 GERALD_ID = "U03SY9R6D5X"
@@ -584,15 +586,17 @@ def reply_to_mentions(say, body):
                                                   r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
                                                   r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)",
                                                   r"(?=.*\bmy\b)(?=.*\bbirthday\b)",
-                                                  r"(?=.*(\bsmart\b|\bintelligent\b|\bbrain\b))(?=.*\byour?\b)"],
+                                                  r"(?=.*(\bsmart\b|\bintelligent\b|\bbrain\b))(?=.*\byour?\b)",
+                                                  r"(?=.*(\blatest\b|\brecent\b))(?=.*\bpapers?\b)"],
                                                  [is_it_a_birthday,
                                                   start_whinetime_workflow,
                                                   reply_closest_birthday,
                                                   list_birthdays,
                                                   my_birthday,
-                                                  reply_brain_size],
-                                                 [False, False, False, False, False, False],
-                                                 [False, False, True, True, True, True]):
+                                                  reply_brain_size,
+                                                  reply_recent_papers],
+                                                 [False, False, False, False, False, False, False],
+                                                 [False, False, True, True, True, True, True]):
         replied = mention_action(message=message, regex=regex, action=action,
                                  case_sensitive=case, pass_message=pass_message)
 
@@ -691,11 +695,11 @@ def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, cas
 @app.event("emoji_changed")
 def new_emoji(body, say):
     if body["event"]["subtype"] == "add":
-        emoji_add_messages = ["I'd love to know the backstory on that one",
-                              "Anyone want to explain this??",
+        emoji_add_messages = ["I'd love to know the backstory on that one :eyes:",
+                              "Anyone want to explain this?? :face_with_raised_eyebrow:",
                               "Feel free to put it to use on this message",
-                              "Looks like I've found my new favourite",
-                              "And that's all the context you're getting"]
+                              "Looks like I've found my new favourite :star_struck:",
+                              "And that's all the context you're getting :shushing_face:"]
         rand_msg = emoji_add_messages[np.random.randint(len(emoji_add_messages))]
 
         ch_id = find_channel("bot-test")
@@ -733,6 +737,135 @@ def reply_brain_size(message):
 
     app.client.chat_postMessage(text=np.random.choice(responses),
                                 channel=message["channel"], thread_ts=message["ts"])
+
+
+def reply_recent_papers(message):
+    """Reply to a message with the most recent papers associated with a particular user or ORCID ID
+
+    Parameters
+    ----------
+    message : `Slack Message`
+        A slack message object
+    """
+    # search for ORCID IDs in the message
+    orcids = re.findall(r"\d{4}-\d{4}-\d{4}-\d{4}", message["text"])
+    names = []
+    direct_orcids = True
+
+    # if don't find any then look for users instead
+    if len(orcids) == 0:
+        direct_orcids = False
+        # find any tags
+        tags = re.findall(r"<[^>]*>", message["text"])
+
+        # there will always be  at least 1 because Gerald has to be tagged so let's remove him
+        tags = tags[1:]
+
+        # let people say "my" paper
+        if len(tags) == 0 and message["text"].find("my") >= 0:
+            tags.append(f"<@{message['user']}>")
+
+        if len(tags) > 0:
+            for tag in tags:
+                orcid, name = get_orcid_name_from_user_id(tag.replace("<@", "").replace(">", ""))
+                print(tag, orcid)
+                if orcid is None:
+                    app.client.chat_postMessage(text=("I think you asked for most recent papers but I don't "
+                                                      f"know {tag}'s ORCID ID sorry :persevere:. You can "
+                                                      "add it to <https://github.com/UW-Astro-Grads/GradWiki/wiki/Community%3APhone-List|the list> in the wiki though! :slightly_smiling_face:"),
+                                                channel=message["channel"], thread_ts=message["ts"])
+                    return
+                else:
+                    orcids.append(orcid)
+                    names.append(name)
+
+    if len(orcids) == 0:
+        app.client.chat_postMessage(text=("I think you asked for most recent papers but I couldn't find any "
+                                          "ORCID IDs or user tags in the message sorry :pleading_face:"),
+                                    channel=message["channel"], thread_ts=message["ts"])
+
+    for i in range(len(orcids)):
+        paper, time = get_most_recent_paper(orcids[i])
+
+        preface = f"The most recent paper from {orcids[i]} was published on the arXiv {time} days ago"
+        authors = f"_Authors: {paper['authors']}_"
+        if not direct_orcids:
+            preface = f"The most recent paper from {tags[i]} was published on the arXiv {time} days ago"
+
+            # this whole next bit is just to bold the author associated with the orcid :D
+            authors = "_Authors: "
+            split_name = names[i].split(" ")
+            for author in paper['authors'].split(", "):
+                split_author = author.split(" ")
+                first_initial, last_name = split_author[0][0], split_author[-1]
+                if first_initial == split_name[0][0] and last_name == split_name[-1]:
+                    authors += f"*{author}*, "
+                else:
+                    authors += f"{author}, "
+            authors = authors[:-2] + "_"
+
+        date_formatted = custom_strftime("%B {S} %Y", paper['date'])
+
+        app.client.chat_postMessage(text=preface, channel=message["channel"], thread_ts=message["ts"])
+        app.client.chat_postMessage(text=preface, blocks=[
+                                        {
+                                            "type": "section",
+                                            "text": {
+                                                "type": "mrkdwn",
+                                                "text": f"*{paper['title']}*"
+                                            }
+                                        },
+                                        {
+                                            "type": "section",
+                                            "text": {
+                                                "type": "mrkdwn",
+                                                "text": authors
+                                            }
+                                        },
+                                        {
+                                            "type": "section",
+                                            "fields": [
+                                                {
+                                                    "type": "mrkdwn",
+                                                    "text": f"_Date: {date_formatted}_"
+                                                },
+                                                {
+                                                    "type": "mrkdwn",
+                                                    "text": f"<{paper['link']}|arXiv link>"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "type": "section",
+                                            "text": {
+                                                "type": "mrkdwn",
+                                                "text": f"Abstract: {paper['abstract']}"
+                                            }
+                                        }
+                                    ],
+                                    channel=message["channel"], thread_ts=message["ts"])
+
+
+def get_orcid_name_from_user_id(user_id):
+    users = app.client.users_list()["members"]
+    orcid_username = None
+    for user in users:
+        if user["id"] == user_id:
+            orcid_username = user["name"]
+            break
+
+    with open("data/grad_info.csv") as orcid_file:
+        for grad in orcid_file:
+            if grad[0] == "#":
+                continue
+            name, username, _, _, orcid = grad.split(",")
+            if username == orcid_username:
+                if orcid == "-":
+                    return None, name
+                else:
+                    return orcid.rstrip(), name
+
+    return None, name
 
 
 def find_channel(channel_name):
