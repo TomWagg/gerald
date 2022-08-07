@@ -331,8 +331,18 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
 
 
 def say_happy_birthday(user_id):
+    """Say happy birthday to a particular user
+
+    Parameters
+    ----------
+    user_id : `str`
+        Slack ID of the user
+    """
+    # pick a random GIF from the collection
     gif_id = np.random.randint(0, 7 + 1)
     gif_url = f"https://raw.githubusercontent.com/TomWagg/gerald/main/img/birthday_gifs/{gif_id}.gif"
+
+    # post the message with the GIF
     app.client.chat_postMessage(channel=find_channel("bot-test"),
                                 text=f":birthday: Happy birthday to <@{user_id}>! :birthday:",
                                 blocks=[
@@ -352,14 +362,26 @@ def say_happy_birthday(user_id):
 
 
 def get_all_birthdays():
+    """Get a list of all of the birthdays
+
+    Returns
+    -------
+    info : `list of tuples`
+        List of name, birthday pairs. Birthday is None if it's not in the table
+    """
+    # open the file with the birthdays
     info = []
     with open("data/birthday_phone_list.csv") as birthday_file:
         for grad in birthday_file:
+            # ignore any comment lines
             if grad[0] == "#":
                 continue
             name, _, _, birthday = grad.split(",")
+
+            # if we don't have their birthday just write None
             if birthday.rstrip() == "-":
                 info.append((name, None))
+            # otherwise format the birthday nicely
             else:
                 day, month = map(int, birthday.rstrip().split("/"))
                 birthday_dt = datetime.date(year=2022, month=month, day=day)
@@ -368,41 +390,58 @@ def get_all_birthdays():
 
 
 def is_it_a_birthday():
+    """ Check if today is someone's birthday! """
+    # find the closest birthday
     birthday_people, _, closest_time = closest_birthday()
 
+    # if you found someone and their birthday is today
     if birthday_people != [] and closest_time == 0:
+        # get the list of users in the workspace
         users = app.client.users_list()["members"]
         for user in users:
             for person in birthday_people:
+                # say happy birthday to each person (handle if there are more than one)
                 if user["name"] == person:
                     say_happy_birthday(user["id"])
 
 
 def closest_birthday():
+    """ Work out when the closest birthday to today is """
     today = datetime.date.today()
 
     usernames = []
     names = []
     closest_time = np.inf
 
+    # go through the birthday list
     with open("data/birthday_phone_list.csv") as birthdays:
         for grad in birthdays:
+            # ignore comment lines
             if grad[0] == "#":
                 continue
             name, username, _, birthday = grad.split(",")
+
+            # ignore people without birthdays listed
             if birthday.rstrip() == "-":
                 continue
+
+            # work out the year based on the month and day
             day, month = map(int, birthday.rstrip().split("/"))
             if month < today.month or (month == today.month and day < today.day):
                 year = today.year + 1
             else:
                 year = today.year
+
+            # work out the days until the birthday
             birthday_dt = datetime.date(year=year, month=month, day=day)
             days_until = (birthday_dt - today).days
+
+            # if it's sooner than the current closest then replace it
             if days_until < closest_time:
                 usernames = [username]
                 names = [name]
                 closest_time = days_until
+            # if it is equal then we have two people sharing a birthday!
             elif days_until == closest_time:
                 usernames.append(username)
                 names.append(name)
@@ -465,26 +504,6 @@ def reply_to_mentions(say, body):
             thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
 
 
-""" ---------- EMOJI HANDLING ---------- """
-
-
-@app.event("emoji_changed")
-def new_emoji(body, say):
-    if body["event"]["subtype"] == "add":
-        emoji_add_messages = ["I'd love to know the backstory on that one",
-                              "Anyone want to explain this??",
-                              "Feel free to put it to use on this message",
-                              "Looks like I've found my new favourite",
-                              "And that's all the context you're getting"]
-        rand_msg = emoji_add_messages[np.random.randint(len(emoji_add_messages))]
-
-        ch_id = find_channel("bot-test")
-        say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel=ch_id)
-
-
-""" ---------- HELPER FUNCTIONS ---------- """
-
-
 def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, case_sensitive=False):
     """Respond to a mention of the app based on certain triggers
 
@@ -529,6 +548,26 @@ def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, cas
             app.client.chat_postMessage(channel=ch_id, text=response, thread_ts=thread_ts)
             break
     return no_matches
+
+
+""" ---------- EMOJI HANDLING ---------- """
+
+
+@app.event("emoji_changed")
+def new_emoji(body, say):
+    if body["event"]["subtype"] == "add":
+        emoji_add_messages = ["I'd love to know the backstory on that one",
+                              "Anyone want to explain this??",
+                              "Feel free to put it to use on this message",
+                              "Looks like I've found my new favourite",
+                              "And that's all the context you're getting"]
+        rand_msg = emoji_add_messages[np.random.randint(len(emoji_add_messages))]
+
+        ch_id = find_channel("bot-test")
+        say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel=ch_id)
+
+
+""" ---------- HELPER FUNCTIONS ---------- """
 
 
 def find_channel(channel_name):
