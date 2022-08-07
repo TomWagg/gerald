@@ -22,7 +22,22 @@ def handle_message_events(body, logger):
     # print("I detected a message", body)
     logger.info(body)
 
-    message = body["event"]
+    if "subtype" in body["event"]:
+        if body["event"]["subtype"] == "message_changed":
+            # if the text hasn't changed then we don't care
+            if body["event"]["message"]["text"] == body["event"]["previous_message"]["text"]:
+                return
+
+            # create a custom message dict with the necessary info
+            message = {
+                "text": body["event"]["message"]["text"],
+                "ts": body["event"]["message"]["ts"],
+                "channel": body["event"]["channel"]
+            }
+        elif body["event"]["subtype"] == "message_deleted":
+            return
+    else:
+        message = body["event"]
 
     reaction_trigger(message, "tom", "tom")
     reaction_trigger(message, "undergrad", "underage")
@@ -75,11 +90,20 @@ def reaction_trigger(message, triggers, reactions, case_sensitive=False):
     for trigger in triggers:
         if text.find(trigger) >= 0:
             for reaction in reactions:
-                app.client.reactions_add(
-                    channel=message["channel"],
-                    timestamp=message["ts"],
-                    name=reaction
-                )
+                try:
+                    app.client.reactions_add(
+                        channel=message["channel"],
+                        timestamp=message["ts"],
+                        name=reaction
+                    )
+                except SlackApiError as e:
+                    if e.response["error"] == "invalid_name":
+                        raise ValueError(e.response["error"], "No such emoji", reaction)
+                    elif e.response["error"] in ("no_reaction", "already_reacted"):
+                        pass
+                    else:
+                        print(e)
+
 
 """ ---------- WHINETIME ---------- """
 
