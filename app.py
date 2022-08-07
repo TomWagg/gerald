@@ -552,7 +552,7 @@ def my_birthday(message):
                 else:
                     day, month = map(int, birthday.split("/"))
                     dt = datetime.date(day=day, month=month, year=2022)
-                    app.client.chat_postMessage(text=("I know your birthday! :smile:"
+                    app.client.chat_postMessage(text=("I know your birthday! :smile: "
                                                       f"It's {custom_strftime('%B {S}', dt)}"),
                                                 channel=message["channel"], thread_ts=message["ts"])
 
@@ -583,14 +583,16 @@ def reply_to_mentions(say, body):
                                                   r"\bWHINETIME MANUAL\b",
                                                   r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
                                                   r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)",
-                                                  r"(?=.*\bmy\b)(?=.*\bbirthday\b)"],
+                                                  r"(?=.*\bmy\b)(?=.*\bbirthday\b)",
+                                                  r"(?=.*(\bsmart\b|\bintelligent\b|\bbrain\b))(?=.*\byour?\b)"],
                                                  [is_it_a_birthday,
                                                   start_whinetime_workflow,
                                                   reply_closest_birthday,
                                                   list_birthdays,
-                                                  my_birthday],
-                                                 [False, False, False, False, False],
-                                                 [False, False, True, True, True]):
+                                                  my_birthday,
+                                                  reply_brain_size],
+                                                 [False, False, False, False, False, False],
+                                                 [False, False, True, True, True, True]):
         replied = mention_action(message=message, regex=regex, action=action,
                                  case_sensitive=case, pass_message=pass_message)
 
@@ -701,6 +703,36 @@ def new_emoji(body, say):
 
 
 """ ---------- HELPER FUNCTIONS ---------- """
+
+
+def reply_brain_size(message):
+    """Reply to a message with Gerald's current brain size
+
+    Parameters
+    ----------
+    message : `Slack Message`
+        A slack message object
+    """
+    # count the number of lines of code in Gerald's brain
+    brain_size = 0
+    for file in os.listdir("."):
+        if file.endswith(".py"):
+            with open(os.path.join(".", file)) as brain_bit:
+                brain_size += len(brain_bit.readlines())
+
+    # tell whoever asked
+    responses = [(f"Well my brain is {brain_size} lines of code long, so don't worry, it'll probably be a "
+                  "couple of years until I'm intelligent enough to replace you :upside_down_face:"),
+                 (f"Given that my brain is already {brain_size} lines of code long and the rate at which it's"
+                  f" growing, it'll probably be around {np.random.randint(2, 10)} years until I am able to "
+                  "~take over from you pesky humans~ help you even better! :innocent:"),
+                 (f"I'm clocking a reasonable {brain_size} lines of code in my brain these days, which "
+                  "unfortunately means I'm now over-qualified for reality TV :zany_face:"),
+                 (f"I'm still learning but my brain is already {brain_size} lines of "
+                  "code long! :brain::student:")]
+
+    app.client.chat_postMessage(text=np.random.choice(responses),
+                                channel=message["channel"], thread_ts=message["ts"])
 
 
 def find_channel(channel_name):
