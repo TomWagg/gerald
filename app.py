@@ -21,55 +21,67 @@ def handle_message_events(body, logger):
     # print("I detected a message", body)
     logger.info(body)
 
+    message = body["event"]
 
-@app.message(re.compile("(bonk|Bonk|BONK)"))
-def bonk_someone(message, say):
+    reaction_trigger(message, "tom", "tom")
+    reaction_trigger(message, "undergrad", "underage")
+    reaction_trigger(message, "gerald", ["gerald", "eyes"])
+    reaction_trigger(message, "birthday", ["birthday", "tada"])
+    reaction_trigger(message, "panic", ["mildpanic"])
+    reaction_trigger(message, "PANIC", ["mild-panic-intensifies"], case_sensitive=True)
+
+    msg_action_trigger(message, "bonk", bonk_someone)
+
+
+def bonk_someone(message):
     # find the user to bonk
     bonkers = re.search("\<(.*?)\>", message["text"])
 
-    # if there is one
+    # if there is one then BONK them
     if bonkers is not None:
         person_to_bonk = bonkers[0]
-        say(f"BONK {person_to_bonk} :bonk::bonk:", thread_ts=message["ts"])
+
+        followups = ["Now go and think about what you've done!",
+                     "Bad grad student, I'll take away your :coffee:!",
+                     "You're lucky Asimov made that first law mate...:robot_face::skull:",
+                     "There's more where that came from"]
+        followup = np.random.choice(followups)
+
+        app.client.chat_postMessage(text=f"BONK {person_to_bonk} :bonk::bonk:\n" + followup,
+                                    thread_ts=message["ts"], channel=message["channel"])
     else:
-        print("I couldn't work out who to bonk T_T")
+        app.client.chat_postMessage(text="I couldn't work out who to bonk :sob:",
+                                    thread_ts=message["ts"], channel=message["channel"])
+
+
+def msg_action_trigger(message, triggers, callback, case_sensitive=False):
+    triggers = np.atleast_1d(triggers)
+    text = message["text"] if case_sensitive else message["text"].lower()
+
+    for trigger in triggers:
+        if text.find(trigger) >= 0:
+            callback(message)
 
 
 """ ---------- MESSAGE REACTIONS ---------- """
 
-@app.message(re.compile("(tom|Tom)"))
-def react_with_tom(message, client):
-    client.reactions_add(
-        channel=message["channel"],
-        timestamp=message["ts"],
-        name="tom"
-    )
 
+def reaction_trigger(message, triggers, reactions, case_sensitive=False):
+    triggers = np.atleast_1d(triggers)
+    reactions = np.atleast_1d(reactions)
+    text = message["text"] if case_sensitive else message["text"].lower()
 
-@app.message("undergrad|Undergrad")
-def no_undergrads(message, client):
-    client.reactions_add(
-        channel=message["channel"],
-        timestamp=message["ts"],
-        name="underage"
-    )
-
-
-@app.message("gerald|Gerald")
-def gerald(message, client):
-    client.reactions_add(
-        channel=message["channel"],
-        timestamp=message["ts"],
-        name="gerald"
-    )
-    client.reactions_add(
-        channel=message["channel"],
-        timestamp=message["ts"],
-        name="eyes"
-    )
-
+    for trigger in triggers:
+        if text.find(trigger) >= 0:
+            for reaction in reactions:
+                app.client.reactions_add(
+                    channel=message["channel"],
+                    timestamp=message["ts"],
+                    name=reaction
+                )
 
 """ ---------- WHINETIME ---------- """
+
 
 @app.view("whinetime-modal")
 def whinetime_submit(ack, body, say, client, logger):
@@ -121,6 +133,7 @@ def whinetime_submit(ack, body, say, client, logger):
 
     except SlackApiError as e:
         logger.error("Error scheduling message: {}".format(e))
+
 
 @app.action("whinetime-open")
 def whinetime_logistics(body, client):
@@ -422,7 +435,7 @@ def reply_to_mentions(say, body):
         time_until_str = f"it's in {closest_time} days!" if closest_time != 0 else "it's today :scream:!!"
 
         if len(names) == 1:
-            say(text=f"The next person to have a person is {names[0]} and " + time_until_str,
+            say(text=f"The next person to have a birthday is {names[0]} and " + time_until_str,
                 channel=body["event"]["channel"], thread_ts=body["event"]["ts"])
         else:
             message = "The next people to have birthdays are " + " AND ".join(names) + " and "
