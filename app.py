@@ -795,6 +795,14 @@ def reply_recent_papers(message):
     for i in range(len(orcids)):
         # get the most recent paper
         paper, time = get_most_recent_paper(orcids[i])
+        if paper is None or time is None:
+            app.client.chat_postMessage(text=("Terribly sorry old chap but it seems that there's a problem "
+                                              f"with that ORCID ID ({orcids[i]}) :hmmmmm:. Either the ID is "
+                                              "invalid _or_ the owner has not linked it to their arXiv "
+                                              "account. Encourage them to do so through "
+                                              "<https://arxiv.org/help/orcid|this link>!"),
+                                        channel=message["channel"], thread_ts=message["ts"])
+            return
 
         # create a brief message for before the paper
         preface = f"The most recent paper from {orcids[i]} was published on the arXiv {time} days ago"

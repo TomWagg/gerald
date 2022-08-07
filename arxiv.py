@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen
+from urllib.error import HTTPError
 from datetime import date
 
 namespace = "{http://www.w3.org/2005/Atom}"
@@ -16,10 +17,14 @@ def get_papers_by_orcid(orcid):
     Returns
     -------
     papers : `list` of `dict`s
-        Each paper contains a link, date, title, abstract and the authors
+        Each paper contains a link, date, title, abstract and the authors. Returns None if ORCID is invalid/
+        isn't linked to arXiv account.
     """
     # get the data from the arXiv
-    data = urlopen(f"https://arxiv.org/a/{orcid}.atom2")
+    try:
+        data = urlopen(f"https://arxiv.org/a/{orcid}.atom2")
+    except HTTPError:
+        return None
 
     # parse the XML
     root = ET.fromstring(data.read())
@@ -54,14 +59,16 @@ def get_most_recent_paper(orcid):
     Returns
     -------
     most_recent : `dict`
-        Most recent paper in a dictionary
+        Most recent paper in a dictionary. None if ORCID invalid/ not linked to arXiv.
 
     most_recent_time : `int`
-        How many days since it was published
+        How many days since it was published. None if ORCID invalid/ not linked to arXiv.
     """
     # get today's date and all of the papers
     today = date.today()
     papers = get_papers_by_orcid(orcid)
+    if papers is None:
+        return None, None
 
     # track the most recent and its time from today
     most_recent = None
