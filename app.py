@@ -390,20 +390,32 @@ def get_all_birthdays():
 
 
 def list_birthdays(message):
+    """List everyone's birthdays in a message in reply to someone
+
+    Parameters
+    ----------
+    message : `Slack message`
+        A slack message object
+    """
+    # get all of the birthdays
     info = get_all_birthdays()
 
+    # two separate lists of whether we know the birthday or not
     unknowns = ""
     knowns = ""
 
+    # add names to the correct list
     for name, birthday in info:
         if birthday is None:
             unknowns += f"• {name}\n"
         else:
             knowns += f"• {name} - {birthday}\n"
 
+    # combine into a full list message
     birthday_list = ":birthday: Here's a list of birthdays that I know\n" + knowns
     birthday_list += "\n:question: And here's a list of people I know but whose birthdays I don't\n" + unknowns
 
+    # post the message as a reply
     app.client.chat_postMessage(text=birthday_list.rstrip(), channel=message["channel"],
                                 thread_ts=message["ts"])
 
@@ -470,10 +482,20 @@ def closest_birthday():
 
 
 def reply_closest_birthday(message):
+    """Reply to someone with the next closest birthday to today
+
+    Parameters
+    ----------
+    message : `Slack message`
+        A slack message object
+    """
+    # get the closest birthday
     _, names, closest_time = closest_birthday()
 
+    # write a string for how close it is (and be dramatic if it is today)
     time_until_str = f"it's in {closest_time} days!" if closest_time != 0 else "it's today :scream:!!"
 
+    # if it is just one birthday
     if len(names) == 1:
         reply = f"The next person to have a birthday is {names[0]} and "
         reply += time_until_str
@@ -499,9 +521,12 @@ def reply_to_mentions(say, body):
                                    [":tada::meowparty: WOOP WOOP :meowparty::tada:"]]):
         replied = mention_trigger(message=message["text"], triggers=triggers, response=response,
                                   thread_ts=message["ts"], ch_id=message["channel"])
+
+        # return immediately if you match one
         if replied:
             return
 
+    # perform actions based on mentions
     for regex, action, case, pass_message in zip([r"\bBIRTHDAY MANUAL\b",
                                                   r"\bWHINETIME MANUAL\b",
                                                   r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
@@ -514,15 +539,38 @@ def reply_to_mentions(say, body):
                                                  [False, False, True, True]):
         replied = mention_action(message=message, regex=regex, action=action,
                                  case_sensitive=case, pass_message=pass_message)
+
+        # return immediately if you match one
         if replied:
             return
 
+    # send a catch-all message if nothing matches
     say(text=("Okay, good news: I heard you, bad news: I'm not a very smart bot so I don't know what you "
               "want from me :shrug::baby::robot_face:"),
         thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
 
 
 def mention_action(message, regex, action, case_sensitive=False, pass_message=True):
+    """Perform an action based on a message that mentions Gerald if it matches a regular expression
+
+    Parameters
+    ----------
+    message : `Slack Message`
+        Object containing slack message
+    regex : `str`
+        Regular expression against which to match
+    action : `function`
+        Function to call if the expression is matched
+    case_sensitive : `bool`, optional
+        Whether the regex should be case sensitive, by default False
+    pass_message : `bool`, optional
+        Whether to pass the message the object to the action function, by default True
+
+    Returns
+    -------
+    match : `bool`
+        Whether the regex was matched
+    """
     flags = None if case_sensitive else re.IGNORECASE
     if re.search(regex, message["text"], flags=flags):
         if pass_message:
