@@ -376,7 +376,7 @@ def get_all_birthdays():
             # ignore any comment lines
             if grad[0] == "#":
                 continue
-            name, _, _, birthday = grad.split(",")
+            name, _, _, birthday, _ = grad.split(",")
 
             # if we don't have their birthday just write None
             if birthday.rstrip() == "-":
@@ -419,7 +419,7 @@ def closest_birthday():
             # ignore comment lines
             if grad[0] == "#":
                 continue
-            name, username, _, birthday = grad.split(",")
+            name, username, _, birthday, _ = grad.split(",")
 
             # ignore people without birthdays listed
             if birthday.rstrip() == "-":
