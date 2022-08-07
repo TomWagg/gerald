@@ -11,6 +11,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 GERALD_ID = "U03SY9R6D5X"
+GERALD_ADMIN = "Tom Wagg"
 
 
 """ ---------- MESSAGE DETECTIONS ---------- """
@@ -371,7 +372,7 @@ def get_all_birthdays():
     """
     # open the file with the birthdays
     info = []
-    with open("data/birthday_phone_list.csv") as birthday_file:
+    with open("data/grad_info.csv") as birthday_file:
         for grad in birthday_file:
             # ignore any comment lines
             if grad[0] == "#":
@@ -447,7 +448,7 @@ def closest_birthday():
     closest_time = np.inf
 
     # go through the birthday list
-    with open("data/birthday_phone_list.csv") as birthdays:
+    with open("data/grad_info.csv") as birthdays:
         for grad in birthdays:
             # ignore comment lines
             if grad[0] == "#":
@@ -506,6 +507,33 @@ def reply_closest_birthday(message):
         app.client.chat_postMessage(text=reply, channel=message["channel"], thread_ts=message["ts"])
 
 
+def my_birthday(message):
+    users = app.client.users_list()["members"]
+    my_username = None
+    for user in users:
+        if user["id"] == message["user"]:
+            my_username = user["name"]
+    with open("data/grad_info.csv") as birthday_file:
+        for grad in birthday_file:
+            _, username, _, birthday, _ = grad.split(",")
+            if username == my_username:
+                if birthday == "-":
+                    app.client.chat_postMessage(text=("This is a little awkward but...I don't know your "
+                                                      "birthday :sweat_smile:. I did my research using the "
+                                                      "Grad Wiki and got them from <https://github.com/UW-Astro-Grads/GradWiki/wiki/Community%3APhone-List|this page>. "
+                                                      "If you could add your birthday there and then let "
+                                                      f"{GERALD_ADMIN} know I'll be sure to remember it "
+                                                      "I promise!!"),
+                                                channel=message["channel"], thread_ts=message["ts"])
+                else:
+                    day, month = map(int, birthday.split("/"))
+                    dt = datetime.date(day=day, month=month, year=2022)
+                    app.client.chat_postMessage(text=("I know your birthday! :smile:"
+                                                      f"It's {custom_strftime('%B {S}', dt)}"),
+                                                channel=message["channel"], thread_ts=message["ts"])
+
+
+
 """ ---------- APP MENTIONS ---------- """
 
 
@@ -530,13 +558,15 @@ def reply_to_mentions(say, body):
     for regex, action, case, pass_message in zip([r"\bBIRTHDAY MANUAL\b",
                                                   r"\bWHINETIME MANUAL\b",
                                                   r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
-                                                  r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)"],
+                                                  r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)",
+                                                  r"(?=.*\bmy\b)(?=.*\bbirthday\b)"],
                                                  [is_it_a_birthday,
                                                   start_whinetime_workflow,
                                                   reply_closest_birthday,
-                                                  list_birthdays],
-                                                 [False, False, False, False],
-                                                 [False, False, True, True]):
+                                                  list_birthdays,
+                                                  my_birthday],
+                                                 [False, False, False, False, False],
+                                                 [False, False, True, True, True]):
         replied = mention_action(message=message, regex=regex, action=action,
                                  case_sensitive=case, pass_message=pass_message)
 
