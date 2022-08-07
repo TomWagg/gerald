@@ -588,7 +588,8 @@ def mention_action(message, regex, action, case_sensitive=False, pass_message=Tr
     message : `Slack Message`
         Object containing slack message
     regex : `str`
-        Regular expression against which to match
+        Regular expression against which to match. https://regex101.com/r/m8lFAb/1 is a good resource for
+        designing these.
     action : `function`
         Function to call if the expression is matched
     case_sensitive : `bool`, optional
