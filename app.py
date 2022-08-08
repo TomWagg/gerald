@@ -20,9 +20,18 @@ GERALD_ADMIN = "Tom Wagg"
 
 
 @app.event("message")
-def handle_message_events(body, logger):
+def handle_message_events(body, logger, say):
     # print("I detected a message", body)
     logger.info(body)
+
+    # if the message was a direct message
+    if body["event"]["channel_type"] == "im":
+        # get the people in the direct message chat
+        members = app.client.conversations_members(channel=body["event"]["channel"])["members"]
+
+        # if there are only two and one is Gerald then handle like you would mentions
+        if len(members) == 2 and GERALD_ID in members:
+            reply_to_mentions(say, body, direct_msg=True)
 
     if "subtype" in body["event"]:
         if body["event"]["subtype"] == "message_changed":
@@ -419,13 +428,15 @@ def get_all_birthdays():
     return info
 
 
-def list_birthdays(message):
+def list_birthdays(message, direct_msg=False):
     """List everyone's birthdays in a message in reply to someone
 
     Parameters
     ----------
     message : `Slack message`
         A slack message object
+    direct_msg : `bool`, optional
+        Whether the message was a direct message (and thus whether to use a thread), by default False
     """
     # get all of the birthdays
     info = get_all_birthdays()
@@ -446,8 +457,9 @@ def list_birthdays(message):
     birthday_list += "\n:question: And here's a list of people I know but whose birthdays I don't\n" + unknowns
 
     # post the message as a reply
+    thread_ts = None if direct_msg else message["ts"]
     app.client.chat_postMessage(text=birthday_list.rstrip(), channel=message["channel"],
-                                thread_ts=message["ts"])
+                                thread_ts=thread_ts)
 
 
 def is_it_a_birthday():
@@ -511,13 +523,15 @@ def closest_birthday():
     return usernames, names, closest_time
 
 
-def reply_closest_birthday(message):
+def reply_closest_birthday(message, direct_msg=False):
     """Reply to someone with the next closest birthday to today
 
     Parameters
     ----------
     message : `Slack message`
         A slack message object
+    direct_msg : `bool`, optional
+        Whether the message was a direct message (and thus whether to use a thread), by default False
     """
     # get the closest birthday
     _, names, closest_time = closest_birthday()
@@ -526,22 +540,25 @@ def reply_closest_birthday(message):
     time_until_str = f"it's in {closest_time} days!" if closest_time != 0 else "it's today :scream:!!"
 
     # if it is just one birthday
+    thread_ts = None if direct_msg else message["ts"]
     if len(names) == 1:
         reply = f"The next person to have a birthday is {names[0]} and "
         reply += time_until_str
-        app.client.chat_postMessage(text=reply, channel=message["channel"], thread_ts=message["ts"])
+        app.client.chat_postMessage(text=reply, channel=message["channel"], thread_ts=thread_ts)
     else:
         reply = "The next people to have birthdays are " + " AND ".join(names) + " and "
         reply += time_until_str
-        app.client.chat_postMessage(text=reply, channel=message["channel"], thread_ts=message["ts"])
+        app.client.chat_postMessage(text=reply, channel=message["channel"], thread_ts=thread_ts)
 
 
-def my_birthday(message):
+def my_birthday(message, direct_msg=False):
     users = app.client.users_list()["members"]
     my_username = None
     for user in users:
         if user["id"] == message["user"]:
             my_username = user["name"]
+
+    thread_ts = None if direct_msg else message["ts"]
     with open("data/grad_info.csv") as birthday_file:
         for grad in birthday_file:
             _, username, _, birthday, _ = grad.split(",")
@@ -554,20 +571,21 @@ def my_birthday(message):
                                                       "If you could add your birthday there and then let "
                                                       f"{GERALD_ADMIN} know I'll be sure to remember it "
                                                       "I promise!!"),
-                                                channel=message["channel"], thread_ts=message["ts"])
+                                                channel=message["channel"], thread_ts=thread_ts)
                 else:
                     day, month = map(int, birthday.split("/"))
                     dt = datetime.date(day=day, month=month, year=2022)
                     app.client.chat_postMessage(text=("I know your birthday! :smile: "
                                                       f"It's {custom_strftime('%B {S}', dt)}"),
-                                                channel=message["channel"], thread_ts=message["ts"])
+                                                channel=message["channel"], thread_ts=thread_ts)
 
 
 """ ---------- APP MENTIONS ---------- """
 
 
 @app.event("app_mention")
-def reply_to_mentions(say, body):
+def reply_to_mentions(say, body, direct_msg=False):
+    print("MENTION", body)
     message = body["event"]
     # reply to mentions with specific messages
     for triggers, response in zip([["status", "okay", "ok", "how are you"],
@@ -576,8 +594,9 @@ def reply_to_mentions(say, body):
                                   ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
                                    ["You're welcome!", "My pleasure!", "Happy to help!"],
                                    [":tada::meowparty: WOOP WOOP :meowparty::tada:"]]):
+        thread_ts = None if direct_msg else message["ts"]
         replied = mention_trigger(message=message["text"], triggers=triggers, response=response,
-                                  thread_ts=message["ts"], ch_id=message["channel"])
+                                  thread_ts=thread_ts, ch_id=message["channel"])
 
         # return immediately if you match one
         if replied:
@@ -601,7 +620,7 @@ def reply_to_mentions(say, body):
                                                  [False, False, False, False, False, False, False],
                                                  [False, False, True, True, True, True, True]):
         replied = mention_action(message=message, regex=regex, action=action,
-                                 case_sensitive=case, pass_message=pass_message)
+                                 case_sensitive=case, pass_message=pass_message, direct_msg=direct_msg)
 
         # return immediately if you match one
         if replied:
@@ -613,7 +632,7 @@ def reply_to_mentions(say, body):
         thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
 
 
-def mention_action(message, regex, action, case_sensitive=False, pass_message=True):
+def mention_action(message, regex, action, case_sensitive=False, pass_message=True, direct_msg=False):
     """Perform an action based on a message that mentions Gerald if it matches a regular expression
 
     Parameters
@@ -629,6 +648,8 @@ def mention_action(message, regex, action, case_sensitive=False, pass_message=Tr
         Whether the regex should be case sensitive, by default False
     pass_message : `bool`, optional
         Whether to pass the message the object to the action function, by default True
+    direct_msg : `bool`, optional
+        Whether the message was a direct message (and thus whether to use a thread), by default False
 
     Returns
     -------
@@ -638,7 +659,7 @@ def mention_action(message, regex, action, case_sensitive=False, pass_message=Tr
     flags = None if case_sensitive else re.IGNORECASE
     if re.search(regex, message["text"], flags=flags):
         if pass_message:
-            action(message)
+            action(message, direct_msg=direct_msg)
         else:
             action()
         return True
@@ -712,13 +733,15 @@ def new_emoji(body, say):
 """ ---------- HELPER FUNCTIONS ---------- """
 
 
-def reply_brain_size(message):
+def reply_brain_size(message, direct_msg=False):
     """Reply to a message with Gerald's current brain size
 
     Parameters
     ----------
     message : `Slack Message`
         A slack message object
+    direct_msg : `bool`, optional
+        Whether the message was a direct message (and thus whether to use a thread), by default False
     """
     # count the number of lines of code in Gerald's brain
     brain_size = 0
@@ -738,22 +761,27 @@ def reply_brain_size(message):
                  (f"I'm still learning but my brain is already {brain_size} lines of "
                   "code long! :brain::student:")]
 
+    thread_ts = None if direct_msg else message["ts"]
     app.client.chat_postMessage(text=np.random.choice(responses),
-                                channel=message["channel"], thread_ts=message["ts"])
+                                channel=message["channel"], thread_ts=thread_ts)
 
 
-def reply_recent_papers(message):
+def reply_recent_papers(message, direct_msg=False):
     """Reply to a message with the most recent papers associated with a particular user or ORCID ID
 
     Parameters
     ----------
     message : `Slack Message`
         A slack message object
+    direct_msg : `bool`, optional
+        Whether the message was a direct message (and thus whether to use a thread), by default False
     """
     # search for ORCID IDs in the message
     orcids = re.findall(r"\d{4}-\d{4}-\d{4}-\d{4}", message["text"])
     names = []
     direct_orcids = True
+
+    thread_ts = None if direct_msg else message["ts"]
 
     # if don't find any then look for users instead
     if len(orcids) == 0:
@@ -761,8 +789,9 @@ def reply_recent_papers(message):
         # find any tags
         tags = re.findall(r"<[^>]*>", message["text"])
 
-        # there will always be at least 1 because Gerald has to be tagged so let's remove him
-        tags = tags[1:]
+        # remove Gerald from the tags
+        if GERALD_ID in tags:
+            tags.remove(f"<@{GERALD_ID}>")
 
         # let people say "my" paper
         if len(tags) == 0 and message["text"].find("my") >= 0:
@@ -781,7 +810,7 @@ def reply_recent_papers(message):
                                                       f"for most recent papers but I don't know {tag}'s "
                                                       "ORCID ID sorry :persevere:. You can add it to "
                                                       "<https://github.com/UW-Astro-Grads/GradWiki/wiki/Community%3APhone-List|the list> in the wiki though! :slightly_smiling_face:"),
-                                                channel=message["channel"], thread_ts=message["ts"])
+                                                channel=message["channel"], thread_ts=thread_ts)
                     return
                 else:
                     # otherwise just append info
@@ -793,7 +822,7 @@ def reply_recent_papers(message):
         app.client.chat_postMessage(text=(f"{insert_british_consternation()} I think you asked for some "
                                           "recent papers but I couldn't find any ORCID IDs or user tags in "
                                           "the message sorry :pleading_face:"),
-                                    channel=message["channel"], thread_ts=message["ts"])
+                                    channel=message["channel"], thread_ts=thread_ts)
         return
 
     # go through each orcid
@@ -806,7 +835,7 @@ def reply_recent_papers(message):
                                               "invalid _or_ the owner has not linked it to their arXiv "
                                               "account. Encourage them to do so through "
                                               "<https://arxiv.org/help/orcid|this link>!"),
-                                        channel=message["channel"], thread_ts=message["ts"])
+                                        channel=message["channel"], thread_ts=thread_ts)
             return
 
         # create a brief message for before the paper
@@ -834,7 +863,7 @@ def reply_recent_papers(message):
         date_formatted = custom_strftime("%B {S} %Y", paper['date'])
 
         # send the pre-message then a big one with the paper info
-        app.client.chat_postMessage(text=preface, channel=message["channel"], thread_ts=message["ts"])
+        app.client.chat_postMessage(text=preface, channel=message["channel"], thread_ts=thread_ts)
         app.client.chat_postMessage(text=preface, blocks=[
                                         {
                                             "type": "section",
@@ -871,7 +900,7 @@ def reply_recent_papers(message):
                                             }
                                         }
                                     ],
-                                    channel=message["channel"], thread_ts=message["ts"])
+                                    channel=message["channel"], thread_ts=thread_ts)
 
 
 def get_orcid_name_from_user_id(user_id):
