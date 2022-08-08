@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 from urllib.request import urlopen
 from urllib.error import HTTPError
 from datetime import date
+import numpy as np
 
 namespace = "{http://www.w3.org/2005/Atom}"
 
@@ -47,22 +48,24 @@ def get_papers_by_orcid(orcid):
     return papers
 
 
-def get_most_recent_paper(orcid):
-    """Get the most recently *published* paper associated with an ORCID id (they are sorted by latest
+def get_n_most_recent_papers(orcid, n):
+    """Get the n most recently *published* papers associated with an ORCID id (they are sorted by latest
     updated which is not the same)
 
     Parameters
     ----------
     orcid : `str`
         ORCID ID
+    n : `int`
+        How many papers
 
     Returns
     -------
-    most_recent : `dict`
-        Most recent paper in a dictionary. None if ORCID invalid/ not linked to arXiv.
+    most_recent : `list` of `dict`
+        Most recent n papers in a dictionary. None if ORCID invalid/not linked to arXiv.
 
-    most_recent_time : `int`
-        How many days since it was published. None if ORCID invalid/ not linked to arXiv.
+    most_recent_time : `list` of `int`
+        How many days since each was published. None if ORCID invalid/not linked to arXiv.
     """
     # get today's date and all of the papers
     today = date.today()
@@ -70,16 +73,14 @@ def get_most_recent_paper(orcid):
     if papers is None:
         return None, None
 
-    # track the most recent and its time from today
-    most_recent = None
-    most_recent_time = None
+    # go through each and find how long it's been since they've been published
+    time_since_published = [(today - paper["date"]).days for paper in papers]
 
-    # go through each and find the most recent
-    for paper in papers:
-        if most_recent is None or today - paper["date"] < most_recent_time:
-            most_recent = paper
-            most_recent_time = today - paper["date"]
-    return most_recent, most_recent_time.days
+    sort_order = np.argsort(time_since_published)
+    sorted_papers = np.array(papers)[sort_order]
+    sorted_times = np.array(time_since_published)[sort_order]
+
+    return sorted_papers[:n], sorted_times[:n]
 
 # print(get_papers_by_orcid("0000-0001-6147-5761")[-1])
 # print(get_most_recent_paper("0000-0001-6147-5761"))

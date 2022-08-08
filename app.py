@@ -8,7 +8,7 @@ import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from arxiv import get_most_recent_paper, get_papers_by_orcid
+from arxiv import get_n_most_recent_papers
 
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
@@ -26,6 +26,10 @@ def handle_message_events(body, logger, say):
 
     # if the message was a direct message
     if body["event"]["channel_type"] == "im":
+        # and it wasn't from Gerald himself (AHHH infinite loop worry)
+        if "message" in body["event"] and body["event"]["message"]["user"] == GERALD_ID:
+            return
+
         # get the people in the direct message chat
         members = app.client.conversations_members(channel=body["event"]["channel"])["members"]
 
@@ -783,6 +787,9 @@ def reply_recent_papers(message, direct_msg=False):
 
     thread_ts = None if direct_msg else message["ts"]
 
+    numbers = re.findall(r" \d* ", message["text"])
+    n_papers = 1 if len(numbers) == 0 else int(numbers[0])
+
     # if don't find any then look for users instead
     if len(orcids) == 0:
         direct_orcids = False
@@ -827,9 +834,9 @@ def reply_recent_papers(message, direct_msg=False):
 
     # go through each orcid
     for i in range(len(orcids)):
-        # get the most recent paper
-        paper, time = get_most_recent_paper(orcids[i])
-        if paper is None or time is None:
+        # get the most recent n papers
+        papers, times = get_n_most_recent_papers(orcids[i], n=n_papers)
+        if papers is None or times is None:
             app.client.chat_postMessage(text=("Terribly sorry old chap but it seems that there's a problem "
                                               f"with that ORCID ID ({orcids[i]}) :hmmmmm:. Either the ID is "
                                               "invalid _or_ the owner has not linked it to their arXiv "
@@ -838,69 +845,108 @@ def reply_recent_papers(message, direct_msg=False):
                                         channel=message["channel"], thread_ts=thread_ts)
             return
 
-        # create a brief message for before the paper
-        preface = f"The most recent paper from {orcids[i]} was published on the arXiv {time} days ago"
-        authors = f"_Authors: {paper['authors']}_"
+        # if it is just one paper then give lots of details
+        if n_papers == 1:
+            paper, time = papers[0], times[0]
 
-        # if you supplied tags (so we know their name)
-        if not direct_orcids:
-            # use the tag in the pre-message
-            preface = f"The most recent paper from {tags[i]} was published on the arXiv {time} days ago"
+            # create a brief message for before the paper
+            preface = f"The most recent paper from {orcids[i]} was published on the arXiv {time} days ago"
+            authors = f"_Authors: {paper['authors']}_"
 
-            # create an author list, adding each but BOLDING the author that matches the orcid
-            authors = "_Authors: "
-            split_name = names[i].split(" ")
-            for author in paper['authors'].split(", "):
-                split_author = author.split(" ")
-                first_initial, last_name = split_author[0][0], split_author[-1]
-                if first_initial == split_name[0][0] and last_name == split_name[-1]:
-                    authors += f"*{author}*, "
-                else:
-                    authors += f"{author}, "
-            authors = authors[:-2] + "_"
+            # if you supplied tags (so we know their name)
+            if not direct_orcids:
+                # use the tag in the pre-message
+                preface = f"The most recent paper from {tags[i]} was published on the arXiv {time} days ago"
 
-        # format the date nicely
-        date_formatted = custom_strftime("%B {S} %Y", paper['date'])
+                # create an author list, adding each but BOLDING the author that matches the orcid
+                authors = "_Authors: "
+                split_name = names[i].split(" ")
+                for author in paper['authors'].split(", "):
+                    split_author = author.split(" ")
+                    first_initial, last_name = split_author[0][0], split_author[-1]
+                    if first_initial == split_name[0][0] and last_name == split_name[-1]:
+                        authors += f"*{author}*, "
+                    else:
+                        authors += f"{author}, "
+                authors = authors[:-2] + "_"
 
-        # send the pre-message then a big one with the paper info
-        app.client.chat_postMessage(text=preface, channel=message["channel"], thread_ts=thread_ts)
-        app.client.chat_postMessage(text=preface, blocks=[
-                                        {
-                                            "type": "section",
-                                            "text": {
-                                                "type": "mrkdwn",
-                                                "text": f"*{paper['title']}*"
-                                            }
-                                        },
-                                        {
-                                            "type": "section",
-                                            "text": {
-                                                "type": "mrkdwn",
-                                                "text": authors
-                                            }
-                                        },
-                                        {
-                                            "type": "section",
-                                            "fields": [
-                                                {
+            # format the date nicely
+            date_formatted = custom_strftime("%B {S} %Y", paper['date'])
+
+            # send the pre-message then a big one with the paper info
+            app.client.chat_postMessage(text=preface, channel=message["channel"], thread_ts=thread_ts)
+            app.client.chat_postMessage(text=preface, blocks=[
+                                            {
+                                                "type": "section",
+                                                "text": {
                                                     "type": "mrkdwn",
-                                                    "text": f"_Date: {date_formatted}_"
-                                                },
-                                                {
-                                                    "type": "mrkdwn",
-                                                    "text": f"<{paper['link']}|arXiv link>"
+                                                    "text": f"*{paper['title']}*"
                                                 }
-                                            ]
-                                        },
-                                        {
-                                            "type": "section",
-                                            "text": {
-                                                "type": "mrkdwn",
-                                                "text": f"Abstract: {paper['abstract']}"
+                                            },
+                                            {
+                                                "type": "section",
+                                                "text": {
+                                                    "type": "mrkdwn",
+                                                    "text": authors
+                                                }
+                                            },
+                                            {
+                                                "type": "section",
+                                                "fields": [
+                                                    {
+                                                        "type": "mrkdwn",
+                                                        "text": f"_Date: {date_formatted}_"
+                                                    },
+                                                    {
+                                                        "type": "mrkdwn",
+                                                        "text": f"<{paper['link']}|arXiv link>"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "section",
+                                                "text": {
+                                                    "type": "mrkdwn",
+                                                    "text": f"Abstract: {paper['abstract']}"
+                                                }
                                             }
-                                        }
-                                    ],
-                                    channel=message["channel"], thread_ts=thread_ts)
+                                        ],
+                                        channel=message["channel"], thread_ts=thread_ts)
+        else:
+            # if it's multiple papers then give a condensed list
+            blocks = [
+                [
+                    {
+                        "type": "section",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": (f"<{paper['link']}|*{paper['title']}*> - "
+                                     f"_{paper['authors'].split(',')[0].split(' ')[-1]} "
+                                     f"et al. ({paper['date'].year})_")
+                        }
+                    }
+                ] for paper in papers
+            ]
+            blocks = list(np.ravel(blocks))
+
+            # join up the times with commas and a final "and"
+            time_str = ", ".join([str(time) for time in times[:-1]])
+            time_str = time_str.rstrip() + f" and {times[-1]}"
+
+            # same preface stuff as above but with many papers
+            preface = (f"The most {n_papers} recent papers from {orcids[i]} were published on the arXiv "
+                       f"{', '.join(time_str)} days ago respectively. Here are the titles and links:")
+
+            # if you supplied tags (so we know their name)
+            if not direct_orcids:
+                # use the tag in the pre-message
+                preface = (f"The most {n_papers} recent papers from {tags[i]} were published on the arXiv "
+                           f"{time_str} days ago respectively. Here are the titles and links:")
+
+            # post the messages
+            app.client.chat_postMessage(text=preface, channel=message["channel"], thread_ts=thread_ts)
+            app.client.chat_postMessage(text=preface, blocks=blocks,
+                                        channel=message["channel"], thread_ts=thread_ts, unfurl_links=False)
 
 
 def get_orcid_name_from_user_id(user_id):
