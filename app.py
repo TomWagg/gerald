@@ -8,7 +8,7 @@ import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from arxiv import get_n_most_recent_papers
+from arxiv import bold_grad_author, get_n_most_recent_papers
 
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
@@ -609,6 +609,7 @@ def reply_to_mentions(say, body, direct_msg=False):
     # perform actions based on mentions
     for regex, action, case, pass_message in zip([r"\bBIRTHDAY MANUAL\b",
                                                   r"\bWHINETIME MANUAL\b",
+                                                  r"\bPAPER MANUAL\b",
                                                   r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
                                                   r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)",
                                                   r"(?=.*\bmy\b)(?=.*\bbirthday\b)",
@@ -616,13 +617,14 @@ def reply_to_mentions(say, body, direct_msg=False):
                                                   r"(?=.*(\blatest\b|\brecent\b))(?=.*\bpapers?\b)"],
                                                  [is_it_a_birthday,
                                                   start_whinetime_workflow,
+                                                  any_new_publications,
                                                   reply_closest_birthday,
                                                   list_birthdays,
                                                   my_birthday,
                                                   reply_brain_size,
                                                   reply_recent_papers],
-                                                 [False, False, False, False, False, False, False],
-                                                 [False, False, True, True, True, True, True]):
+                                                 [True, True, True, False, False, False, False, False],
+                                                 [False, False, False, True, True, True, True, True]):
         replied = mention_action(message=message, regex=regex, action=action,
                                  case_sensitive=case, pass_message=pass_message, direct_msg=direct_msg)
 
@@ -660,7 +662,7 @@ def mention_action(message, regex, action, case_sensitive=False, pass_message=Tr
     match : `bool`
         Whether the regex was matched
     """
-    flags = None if case_sensitive else re.IGNORECASE
+    flags = 0 if case_sensitive else re.IGNORECASE
     if re.search(regex, message["text"], flags=flags):
         if pass_message:
             action(message, direct_msg=direct_msg)
@@ -859,16 +861,7 @@ def reply_recent_papers(message, direct_msg=False):
                 preface = f"The most recent paper from {tags[i]} was published on the arXiv {time} days ago"
 
                 # create an author list, adding each but BOLDING the author that matches the orcid
-                authors = "_Authors: "
-                split_name = names[i].split(" ")
-                for author in paper['authors'].split(", "):
-                    split_author = author.split(" ")
-                    first_initial, last_name = split_author[0][0], split_author[-1]
-                    if first_initial == split_name[0][0] and last_name == split_name[-1]:
-                        authors += f"*{author}*, "
-                    else:
-                        authors += f"{author}, "
-                authors = authors[:-2] + "_"
+                authors = bold_grad_author(paper['authors'], names[i])
 
             # format the date nicely
             date_formatted = custom_strftime("%B {S} %Y", paper['date'])
@@ -993,6 +986,162 @@ def get_orcid_name_from_user_id(user_id):
     return None, None
 
 
+def any_new_publications():
+    """ Check whether any new publications by grad students are out """
+    # go through the file of grads
+    with open("data/grad_info.csv") as grad_file:
+        for grad in grad_file:
+            # skip any comments
+            if grad[0] == "#":
+                continue
+
+            name, username, _, _, orcid = grad.split(",")
+            orcid = orcid.rstrip()
+
+            # skip anyone who doesn't have an orcid ID
+            if orcid == "-":
+                continue
+
+            # get the latest 3 papers from this person (I'm assuming no one will publish more than 3 a day!)
+            papers, times = get_n_most_recent_papers(orcid, 3)
+
+            # skip anyone who has a bad ORCID ID
+            if papers is None or times is None:
+                continue
+
+            # get any papers that were published today
+            today_papers = []
+            for paper, time in zip(papers, times):
+                print(time)
+                if time == 0:
+                    today_papers.append(paper)
+
+            # if this person has one then announce it!
+            if len(today_papers) > 0:
+                announce_publication(username, name, today_papers)
+    print("No new papers!")
+
+
+def announce_publication(username, name, papers):
+    """Announce to the workspace that someone has published a new paper(s)
+
+    Parameters
+    ----------
+    username : `str`
+        Slack username of the person
+    name : `str`
+        Plain name of the person
+    papers : `list` of `dicts`
+        List of dictionaries of the papers (I imagine usually just one but just in case)
+    """
+    # find the user ID of the person
+    users = app.client.users_list()["members"]
+    user_id = None
+    for user in users:
+        if user["name"] == username:
+            user_id = user["id"]
+            break
+
+    if user_id is None:
+        return
+
+    # choose an randon adjective
+    adjective = np.random.choice(["Splendid", "Tremendous", "Brilliant",
+                                  "Excellent", "Fantastic", "Spectacular"])
+
+    # if it's just one then write some messages to them
+    if len(papers) == 1:
+        preface = f"Look what I found on the arXiv this morning :tada: {adjective} work <@{user_id}> :clap:"
+        outro = ("I put the abstract in the thread for anyone interested in learning more "
+                 f"- again, a big congratulations to <@{user_id}> for this awesome paper")
+    else:
+        # edit the messages if there is more than one paper
+        preface = (f"Look what I found on the arXiv this morning :tada: Not 1 but {len(papers)} new papers "
+                   f"from <@{user_id}>!! :clap::scream:")
+        outro = ("I put the abstracts in the thread for anyone interested in learning more "
+                 f"- again, a big congratulations to <@{user_id}> for these awesome papers")
+
+    # add the same starting blocks for all
+    start_blocks = [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": ":rotating_light: New grad paper alert!! :rotating_light:",
+                "emoji": True
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": preface
+            }
+        },
+    ]
+
+    # add some blocks for each paper
+    paper_blocks = []
+    for paper in papers:
+        paper_blocks.extend(
+            [
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"<{paper['link']}|*{paper['title']}*>"
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": bold_grad_author(paper["authors"], name)
+                    }
+                }
+            ])
+
+    # add a single end block about the abstract
+    end_blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": outro
+            }
+        }
+    ]
+
+    # combine all of the blocks
+    blocks = start_blocks + paper_blocks + end_blocks
+
+    # create blocks for each abstract
+    abstract_blocks = [
+        [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": paper['abstract']
+                }
+            }
+        ] for paper in papers
+    ]
+
+    # flatten out the blocks into the right format
+    blocks = list(np.ravel(blocks))
+    abstract_blocks = list(np.ravel(abstract_blocks))
+
+    # find the channel and send the initial message
+    channel = find_channel("bot-test")
+    message = app.client.chat_postMessage(text="Congrats on your new paper(s)!",
+                                          blocks=blocks, channel=channel, unfurl_links=False)
+
+    # reply in thread with the abstracts
+    app.client.chat_postMessage(text="abstract", blocks=abstract_blocks,
+                                channel=channel, thread_ts=message["ts"])
+
+
 def insert_british_consternation():
     choices = ["Oh fiddlesticks!", "Ah burnt crumpets!", "Oops, I've bangers and mashed it!",
                "It seems I've had a mare!", "It appears I've had a mare!",
@@ -1055,6 +1204,7 @@ def every_morning():
         start_whinetime_workflow()
 
     is_it_a_birthday()
+    any_new_publications()
 
 
 # start Gerald

@@ -82,5 +82,39 @@ def get_n_most_recent_papers(orcid, n):
 
     return sorted_papers[:n], sorted_times[:n]
 
-# print(get_papers_by_orcid("0000-0001-6147-5761")[-1])
-# print(get_most_recent_paper("0000-0001-6147-5761"))
+
+def bold_grad_author(author_string, name):
+    """Bold the grad author in the list of authors
+
+    Parameters
+    ----------
+    author_string : `str`
+        Initial author string
+    name : `str`
+        Name of grad
+
+    Returns
+    -------
+    authors: `str`
+        Author string but with asterisks around the grad
+    """
+    authors = "_Authors: "
+    split_name = name.split(" ")
+
+    # go through each author in the list
+    for author in author_string.split(", "):
+        split_author = author.split(" ")
+
+        # get their first initial and last name
+        first_initial, last_name = split_author[0][0], split_author[-1]
+
+        # NOTE: I assume if first initial and last name match then it is the right person
+        if first_initial == split_name[0][0] and last_name == split_name[-1]:
+            # add asterisks for bold in mrkdwn
+            authors += f"*{author}*, "
+        else:
+            authors += f"{author}, "
+
+    # add final underscore so the whole thing is italic
+    authors = authors[:-2] + "_"
+    return authors
