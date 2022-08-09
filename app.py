@@ -593,7 +593,8 @@ def reply_to_mentions(say, body, direct_msg=False):
     message = body["event"]
     # reply to mentions with specific messages
     for triggers, response in zip([["status", "okay", "ok", "how are you"],
-                                   ["thank", "you're the best", "nice job", "good work", "good job"],
+                                   ["thank", "you're the best", "nice job", "nice work", "good work",
+                                    "good job", "well done"],
                                    ["celebrate"]],
                                   ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
                                    ["You're welcome!", "My pleasure!", "Happy to help!"],
@@ -988,6 +989,8 @@ def get_orcid_name_from_user_id(user_id):
 
 def any_new_publications():
     """ Check whether any new publications by grad students are out """
+    no_new_papers = True
+
     # go through the file of grads
     with open("data/grad_info.csv") as grad_file:
         for grad in grad_file:
@@ -1018,8 +1021,11 @@ def any_new_publications():
 
             # if this person has one then announce it!
             if len(today_papers) > 0:
+                no_new_papers = False
                 announce_publication(username, name, today_papers)
-    print("No new papers!")
+
+    if no_new_papers:
+        print("No new papers!")
 
 
 def announce_publication(username, name, papers):
@@ -1138,7 +1144,7 @@ def announce_publication(username, name, papers):
                                           blocks=blocks, channel=channel, unfurl_links=False)
 
     # reply in thread with the abstracts
-    app.client.chat_postMessage(text="abstract", blocks=abstract_blocks,
+    app.client.chat_postMessage(text="Your paper abstracts:", blocks=abstract_blocks,
                                 channel=channel, thread_ts=message["ts"])
 
 
