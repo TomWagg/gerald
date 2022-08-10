@@ -64,27 +64,6 @@ def handle_message_events(body, logger, say):
     msg_action_trigger(message, "bonk", bonk_someone)
 
 
-def bonk_someone(message):
-    # find the user to bonk
-    bonkers = re.search("\<(.*?)\>", message["text"])
-
-    # if there is one then BONK them
-    if bonkers is not None:
-        person_to_bonk = bonkers[0]
-
-        followups = ["Now go and think about what you've done!",
-                     "Bad grad student, I'll take away your :coffee:!",
-                     "You're lucky Asimov made that first law mate...:robot_face::skull:",
-                     "There's more where that came from"]
-        followup = np.random.choice(followups)
-
-        app.client.chat_postMessage(text=f"BONK {person_to_bonk} :bonk::bonk:\n" + followup,
-                                    thread_ts=message["ts"], channel=message["channel"])
-    else:
-        app.client.chat_postMessage(text=f"{insert_british_consternation()} I couldn't work out who to bonk :sob:",
-                                    thread_ts=message["ts"], channel=message["channel"])
-
-
 def msg_action_trigger(message, triggers, callback, case_sensitive=False):
     triggers = np.atleast_1d(triggers)
     text = message["text"] if case_sensitive else message["text"].lower()
@@ -118,6 +97,159 @@ def reaction_trigger(message, triggers, reactions, case_sensitive=False):
                         pass
                     else:
                         print(e)
+
+
+""" ---------- APP MENTIONS ---------- """
+
+
+@app.event("app_mention")
+def reply_to_mentions(say, body, direct_msg=False):
+    print("MENTION", body)
+    message = body["event"]
+    # reply to mentions with specific messages
+    for triggers, response in zip([["status", "okay", "ok", "how are you"],
+                                   ["thank", "you're the best", "nice job", "nice work", "good work",
+                                    "good job", "well done"],
+                                   ["celebrate"]],
+                                  ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
+                                   ["You're welcome!", "My pleasure!", "Happy to help!"],
+                                   [":tada::meowparty: WOOP WOOP :meowparty::tada:"]]):
+        thread_ts = None if direct_msg else message["ts"]
+        replied = mention_trigger(message=message["text"], triggers=triggers, response=response,
+                                  thread_ts=thread_ts, ch_id=message["channel"])
+
+        # return immediately if you match one
+        if replied:
+            return
+
+    # perform actions based on mentions
+    for regex, action, case, pass_message in zip([r"\bBIRTHDAY MANUAL\b",
+                                                  r"\bWHINETIME MANUAL\b",
+                                                  r"\bPAPER MANUAL\b",
+                                                  r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
+                                                  r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)",
+                                                  r"(?=.*\bmy\b)(?=.*\bbirthday\b)",
+                                                  r"(?=.*(\bsmart\b|\bintelligent\b|\bbrain\b))(?=.*\byour?\b)",
+                                                  r"(?=.*(\blatest\b|\brecent\b))(?=.*\bpapers?\b)"],
+                                                 [is_it_a_birthday,
+                                                  start_whinetime_workflow,
+                                                  any_new_publications,
+                                                  reply_closest_birthday,
+                                                  list_birthdays,
+                                                  my_birthday,
+                                                  reply_brain_size,
+                                                  reply_recent_papers],
+                                                 [True, True, True, False, False, False, False, False],
+                                                 [False, False, False, True, True, True, True, True]):
+        replied = mention_action(message=message, regex=regex, action=action,
+                                 case_sensitive=case, pass_message=pass_message, direct_msg=direct_msg)
+
+        # return immediately if you match one
+        if replied:
+            return
+
+    # send a catch-all message if nothing matches
+    say(text=(f"{insert_british_consternation()} Okay, good news: I heard you. Bad news: I'm not a very "
+              "smart bot so I don't know what you want from me :shrug::baby::robot_face:"),
+        thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
+
+
+def mention_action(message, regex, action, case_sensitive=False, pass_message=True, direct_msg=False):
+    """Perform an action based on a message that mentions Gerald if it matches a regular expression
+
+    Parameters
+    ----------
+    message : `Slack Message`
+        Object containing slack message
+    regex : `str`
+        Regular expression against which to match. https://regex101.com/r/m8lFAb/1 is a good resource for
+        designing these.
+    action : `function`
+        Function to call if the expression is matched
+    case_sensitive : `bool`, optional
+        Whether the regex should be case sensitive, by default False
+    pass_message : `bool`, optional
+        Whether to pass the message the object to the action function, by default True
+    direct_msg : `bool`, optional
+        Whether the message was a direct message (and thus whether to use a thread), by default False
+
+    Returns
+    -------
+    match : `bool`
+        Whether the regex was matched
+    """
+    flags = 0 if case_sensitive else re.IGNORECASE
+    if re.search(regex, message["text"], flags=flags):
+        if pass_message:
+            action(message, direct_msg=direct_msg)
+        else:
+            action()
+        return True
+    else:
+        return False
+
+
+def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, case_sensitive=False):
+    """Respond to a mention of the app based on certain triggers
+
+    Parameters
+    ----------
+    message : `str`
+        The message that mentioned the app
+    triggers : `list`
+        List of potential triggers
+    response : `list` or `str`
+        Either a list of responses (a random will be chosen) or a single response
+    thread_ts : `float`, optional
+        Timestamp of the thread of the message, by default None
+    ch_id : `str`, optional
+        ID of the channel, by default None
+    case_sensitive : `bool`, optional
+        Whether the triggers are case sensitive, by default False
+
+    Returns
+    -------
+    no_matches : `bool`
+        Whether there were no matches to the trigger or not
+    """
+    # keep track of whether you found a match to a trigger
+    matched = False
+
+    # move it all to lower case if you don't care
+    if not case_sensitive:
+        message = message.lower()
+
+    # go through each potential trigger
+    for trigger in triggers:
+        # if you find it in the message
+        if message.find(trigger) >= 0:
+            matched = True
+
+            # if the response is a list then pick a random one
+            if isinstance(response, list):
+                response = np.random.choice(response)
+
+            # send a message and break out
+            app.client.chat_postMessage(channel=ch_id, text=response, thread_ts=thread_ts)
+            break
+    return matched
+
+
+""" ---------- EMOJI HANDLING ---------- """
+
+
+@app.event("emoji_changed")
+def new_emoji(body, say):
+    if body["event"]["subtype"] == "add":
+        emoji_add_messages = ["I'd love to know the backstory on that one :eyes:",
+                              "Anyone want to explain this?? :face_with_raised_eyebrow:",
+                              "Feel free to put it to use on this message",
+                              "Looks like I've found my new favourite :star_struck:",
+                              "And that's all the context you're getting :shushing_face:"]
+        rand_msg = emoji_add_messages[np.random.randint(len(emoji_add_messages))]
+
+        ch_id = find_channel("bot-test")
+        say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel=ch_id)
 
 
 """ ---------- WHINETIME ---------- """
@@ -584,194 +716,7 @@ def my_birthday(message, direct_msg=False):
                                                 channel=message["channel"], thread_ts=thread_ts)
 
 
-""" ---------- APP MENTIONS ---------- """
-
-
-@app.event("app_mention")
-def reply_to_mentions(say, body, direct_msg=False):
-    print("MENTION", body)
-    message = body["event"]
-    # reply to mentions with specific messages
-    for triggers, response in zip([["status", "okay", "ok", "how are you"],
-                                   ["thank", "you're the best", "nice job", "nice work", "good work",
-                                    "good job", "well done"],
-                                   ["celebrate"]],
-                                  ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
-                                   ["You're welcome!", "My pleasure!", "Happy to help!"],
-                                   [":tada::meowparty: WOOP WOOP :meowparty::tada:"]]):
-        thread_ts = None if direct_msg else message["ts"]
-        replied = mention_trigger(message=message["text"], triggers=triggers, response=response,
-                                  thread_ts=thread_ts, ch_id=message["channel"])
-
-        # return immediately if you match one
-        if replied:
-            return
-
-    # perform actions based on mentions
-    for regex, action, case, pass_message in zip([r"\bBIRTHDAY MANUAL\b",
-                                                  r"\bWHINETIME MANUAL\b",
-                                                  r"\bPAPER MANUAL\b",
-                                                  r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
-                                                  r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)",
-                                                  r"(?=.*\bmy\b)(?=.*\bbirthday\b)",
-                                                  r"(?=.*(\bsmart\b|\bintelligent\b|\bbrain\b))(?=.*\byour?\b)",
-                                                  r"(?=.*(\blatest\b|\brecent\b))(?=.*\bpapers?\b)"],
-                                                 [is_it_a_birthday,
-                                                  start_whinetime_workflow,
-                                                  any_new_publications,
-                                                  reply_closest_birthday,
-                                                  list_birthdays,
-                                                  my_birthday,
-                                                  reply_brain_size,
-                                                  reply_recent_papers],
-                                                 [True, True, True, False, False, False, False, False],
-                                                 [False, False, False, True, True, True, True, True]):
-        replied = mention_action(message=message, regex=regex, action=action,
-                                 case_sensitive=case, pass_message=pass_message, direct_msg=direct_msg)
-
-        # return immediately if you match one
-        if replied:
-            return
-
-    # send a catch-all message if nothing matches
-    say(text=(f"{insert_british_consternation()} Okay, good news: I heard you. Bad news: I'm not a very "
-              "smart bot so I don't know what you want from me :shrug::baby::robot_face:"),
-        thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
-
-
-def mention_action(message, regex, action, case_sensitive=False, pass_message=True, direct_msg=False):
-    """Perform an action based on a message that mentions Gerald if it matches a regular expression
-
-    Parameters
-    ----------
-    message : `Slack Message`
-        Object containing slack message
-    regex : `str`
-        Regular expression against which to match. https://regex101.com/r/m8lFAb/1 is a good resource for
-        designing these.
-    action : `function`
-        Function to call if the expression is matched
-    case_sensitive : `bool`, optional
-        Whether the regex should be case sensitive, by default False
-    pass_message : `bool`, optional
-        Whether to pass the message the object to the action function, by default True
-    direct_msg : `bool`, optional
-        Whether the message was a direct message (and thus whether to use a thread), by default False
-
-    Returns
-    -------
-    match : `bool`
-        Whether the regex was matched
-    """
-    flags = 0 if case_sensitive else re.IGNORECASE
-    if re.search(regex, message["text"], flags=flags):
-        if pass_message:
-            action(message, direct_msg=direct_msg)
-        else:
-            action()
-        return True
-    else:
-        return False
-
-
-def mention_trigger(message, triggers, response, thread_ts=None, ch_id=None, case_sensitive=False):
-    """Respond to a mention of the app based on certain triggers
-
-    Parameters
-    ----------
-    message : `str`
-        The message that mentioned the app
-    triggers : `list`
-        List of potential triggers
-    response : `list` or `str`
-        Either a list of responses (a random will be chosen) or a single response
-    thread_ts : `float`, optional
-        Timestamp of the thread of the message, by default None
-    ch_id : `str`, optional
-        ID of the channel, by default None
-    case_sensitive : `bool`, optional
-        Whether the triggers are case sensitive, by default False
-
-    Returns
-    -------
-    no_matches : `bool`
-        Whether there were no matches to the trigger or not
-    """
-    # keep track of whether you found a match to a trigger
-    matched = False
-
-    # move it all to lower case if you don't care
-    if not case_sensitive:
-        message = message.lower()
-
-    # go through each potential trigger
-    for trigger in triggers:
-        # if you find it in the message
-        if message.find(trigger) >= 0:
-            matched = True
-
-            # if the response is a list then pick a random one
-            if isinstance(response, list):
-                response = np.random.choice(response)
-
-            # send a message and break out
-            app.client.chat_postMessage(channel=ch_id, text=response, thread_ts=thread_ts)
-            break
-    return matched
-
-
-""" ---------- EMOJI HANDLING ---------- """
-
-
-@app.event("emoji_changed")
-def new_emoji(body, say):
-    if body["event"]["subtype"] == "add":
-        emoji_add_messages = ["I'd love to know the backstory on that one :eyes:",
-                              "Anyone want to explain this?? :face_with_raised_eyebrow:",
-                              "Feel free to put it to use on this message",
-                              "Looks like I've found my new favourite :star_struck:",
-                              "And that's all the context you're getting :shushing_face:"]
-        rand_msg = emoji_add_messages[np.random.randint(len(emoji_add_messages))]
-
-        ch_id = find_channel("bot-test")
-        say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel=ch_id)
-
-
-""" ---------- HELPER FUNCTIONS ---------- """
-
-
-def reply_brain_size(message, direct_msg=False):
-    """Reply to a message with Gerald's current brain size
-
-    Parameters
-    ----------
-    message : `Slack Message`
-        A slack message object
-    direct_msg : `bool`, optional
-        Whether the message was a direct message (and thus whether to use a thread), by default False
-    """
-    # count the number of lines of code in Gerald's brain
-    brain_size = 0
-    for file in os.listdir("."):
-        if file.endswith(".py"):
-            with open(os.path.join(".", file)) as brain_bit:
-                brain_size += len(brain_bit.readlines())
-
-    # tell whoever asked
-    responses = [(f"Well my brain is {brain_size} lines of code long, so don't worry, it'll probably be a "
-                  "couple of years until I'm intelligent enough to replace you :upside_down_face:"),
-                 (f"Given that my brain is already {brain_size} lines of code long and the rate at which it's"
-                  f" growing, it'll probably be around {np.random.randint(2, 10)} years until I am able to "
-                  "~take over from you pesky humans~ help you even better! :innocent:"),
-                 (f"I'm clocking a reasonable {brain_size} lines of code in my brain these days, which "
-                  "unfortunately means I'm now over-qualified for reality TV :zany_face:"),
-                 (f"I'm still learning but my brain is already {brain_size} lines of "
-                  "code long! :brain::student:")]
-
-    thread_ts = None if direct_msg else message["ts"]
-    app.client.chat_postMessage(text=np.random.choice(responses),
-                                channel=message["channel"], thread_ts=thread_ts)
-
+""" ---------- PUBLICATION ANNOUNCEMENTS ---------- """
 
 def reply_recent_papers(message, direct_msg=False):
     """Reply to a message with the most recent papers associated with a particular user or ORCID ID
@@ -1146,6 +1091,64 @@ def announce_publication(username, name, papers):
     # reply in thread with the abstracts
     app.client.chat_postMessage(text="Your paper abstracts:", blocks=abstract_blocks,
                                 channel=channel, thread_ts=message["ts"])
+
+
+""" ---------- HELPER FUNCTIONS ---------- """
+
+
+def bonk_someone(message):
+    # find the user to bonk
+    bonkers = re.search("\<(.*?)\>", message["text"])
+
+    # if there is one then BONK them
+    if bonkers is not None:
+        person_to_bonk = bonkers[0]
+
+        followups = ["Now go and think about what you've done!",
+                     "Bad grad student, I'll take away your :coffee:!",
+                     "You're lucky Asimov made that first law mate...:robot_face::skull:",
+                     "There's more where that came from"]
+        followup = np.random.choice(followups)
+
+        app.client.chat_postMessage(text=f"BONK {person_to_bonk} :bonk::bonk:\n" + followup,
+                                    thread_ts=message["ts"], channel=message["channel"])
+    else:
+        app.client.chat_postMessage(text=(f"{insert_british_consternation()} I couldn't work out who "
+                                          "to bonk :sob:"),
+                                    thread_ts=message["ts"], channel=message["channel"])
+
+
+def reply_brain_size(message, direct_msg=False):
+    """Reply to a message with Gerald's current brain size
+
+    Parameters
+    ----------
+    message : `Slack Message`
+        A slack message object
+    direct_msg : `bool`, optional
+        Whether the message was a direct message (and thus whether to use a thread), by default False
+    """
+    # count the number of lines of code in Gerald's brain
+    brain_size = 0
+    for file in os.listdir("."):
+        if file.endswith(".py"):
+            with open(os.path.join(".", file)) as brain_bit:
+                brain_size += len(brain_bit.readlines())
+
+    # tell whoever asked
+    responses = [(f"Well my brain is {brain_size} lines of code long, so don't worry, it'll probably be a "
+                  "couple of years until I'm intelligent enough to replace you :upside_down_face:"),
+                 (f"Given that my brain is already {brain_size} lines of code long and the rate at which it's"
+                  f" growing, it'll probably be around {np.random.randint(2, 10)} years until I am able to "
+                  "~take over from you pesky humans~ help you even better! :innocent:"),
+                 (f"I'm clocking a reasonable {brain_size} lines of code in my brain these days, which "
+                  "unfortunately means I'm now over-qualified for reality TV :zany_face:"),
+                 (f"I'm still learning but my brain is already {brain_size} lines of "
+                  "code long! :brain::student:")]
+
+    thread_ts = None if direct_msg else message["ts"]
+    app.client.chat_postMessage(text=np.random.choice(responses),
+                                channel=message["channel"], thread_ts=thread_ts)
 
 
 def insert_british_consternation():
