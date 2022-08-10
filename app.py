@@ -170,9 +170,10 @@ def reply_to_mentions(say, body, direct_msg=False):
             return
 
     # send a catch-all message if nothing matches
+    thread_ts = None if direct_msg else body["event"]["ts"]
     say(text=(f"{insert_british_consternation()} Okay, good news: I heard you. Bad news: I'm not a very "
               "smart bot so I don't know what you want from me :shrug::baby::robot_face:"),
-        thread_ts=body["event"]["ts"], channel=body["event"]["channel"])
+        thread_ts=thread_ts, channel=body["event"]["channel"])
 
 
 def mention_action(message, regex, action, case_sensitive=False, pass_message=True, direct_msg=False):
