@@ -145,6 +145,7 @@ def reply_to_mentions(say, body, direct_msg=False):
     for regex, action, case, pass_message in zip([r"\bBIRTHDAY MANUAL\b",
                                                   r"\bWHINETIME MANUAL\b",
                                                   r"\bPAPER MANUAL\b",
+                                                  r"\bhappy birthday\b",
                                                   r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
                                                   r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)",
                                                   r"(?=.*\bmy\b)(?=.*\bbirthday\b)",
@@ -153,13 +154,14 @@ def reply_to_mentions(say, body, direct_msg=False):
                                                  [is_it_a_birthday,
                                                   start_whinetime_workflow,
                                                   any_new_publications,
+                                                  reply_happy_birthday,
                                                   reply_closest_birthday,
                                                   list_birthdays,
                                                   my_birthday,
                                                   reply_brain_size,
                                                   reply_recent_papers],
-                                                 [True, True, True, False, False, False, False, False],
-                                                 [False, False, False, True, True, True, True, True]):
+                                                 [True, True, True, False, False, False, False, False, False],
+                                                 [False, False, False, True, True, True, True, True, True]):
         replied = mention_action(message=message, regex=regex, action=action,
                                  case_sensitive=case, pass_message=pass_message, direct_msg=direct_msg)
 
@@ -730,6 +732,28 @@ def reply_closest_birthday(message, direct_msg=False):
         reply = "The next people to have birthdays are " + " AND ".join(names) + " and "
         reply += time_until_str
         app.client.chat_postMessage(text=reply, channel=message["channel"], thread_ts=thread_ts)
+
+
+def reply_happy_birthday(message, direct_msg=False):
+    """Reply to someone if they wish Gerald a happy birthday
+
+    Parameters
+    ----------
+    message : `Slack message`
+        A slack message object
+    direct_msg : `bool`, optional
+        Whether the message was a direct message (and thus whether to use a thread), by default False
+    """
+    thread_ts = None if direct_msg else message["ts"]
+    today = datetime.date.today()
+    if today.month == 8 and today.day == 5:
+        app.client.chat_postMessage(text="Thank you!! That's so nice of you to remember :relaxed:",
+                                    channel=message["channel"], thread_ts=thread_ts)
+    else:
+        app.client.chat_postMessage(text=("Oh um, well thank you, I do appreciate the sentiment...but my "
+                                          "birthday is actually on the 5th of August "
+                                          ":face_with_rolling_eyes:"),
+                                    channel=message["channel"], thread_ts=thread_ts)
 
 
 def my_birthday(message, direct_msg=False):
