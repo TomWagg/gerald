@@ -56,15 +56,14 @@ def handle_message_events(body, logger, say):
     else:
         message = body["event"]
 
-    reaction_trigger(message, "tom", "tom")
-    reaction_trigger(message, "undergrad", "underage")
-    reaction_trigger(message, "gerald", ["gerald", "eyes"])
-    reaction_trigger(message, "birthday", ["birthday", "tada"])
-    reaction_trigger(message, "panic", ["mildpanic"])
-    reaction_trigger(message, "PANIC", ["mild-panic-intensifies"], case_sensitive=True)
-    reaction_trigger(message, "vampire", ["vampire"])
-    reaction_trigger(message, "goodnight", "sleeping")
-    reaction_trigger(message, "nap", "sleeping")
+    reaction_trigger(message, r"\btom\b", "tom")
+    reaction_trigger(message, r"\bundergrad\b", "underage")
+    reaction_trigger(message, r"\bgerald\b", ["gerald", "eyes"])
+    reaction_trigger(message, r"\bbirthday\b", ["birthday", "tada"])
+    reaction_trigger(message, r"\bpanic\b", ["mildpanic"])
+    reaction_trigger(message, r"\bPANIC\b", ["mild-panic-intensifies"], case_sensitive=True)
+    reaction_trigger(message, r"\bvampires?\b", ["vampire"])
+    reaction_trigger(message, r"(\bgoodnight\b|\bnap\b)", "sleeping")
 
     msg_action_trigger(message, "bonk", bonk_someone)
 
@@ -81,27 +80,25 @@ def msg_action_trigger(message, triggers, callback, case_sensitive=False):
 """ ---------- MESSAGE REACTIONS ---------- """
 
 
-def reaction_trigger(message, triggers, reactions, case_sensitive=False):
-    triggers = np.atleast_1d(triggers)
+def reaction_trigger(message, regex, reactions, case_sensitive=False):
     reactions = np.atleast_1d(reactions)
-    text = message["text"] if case_sensitive else message["text"].lower()
 
-    for trigger in triggers:
-        if text.find(trigger) >= 0:
-            for reaction in reactions:
-                try:
-                    app.client.reactions_add(
-                        channel=message["channel"],
-                        timestamp=message["ts"],
-                        name=reaction
-                    )
-                except SlackApiError as e:
-                    if e.response["error"] == "invalid_name":
-                        raise ValueError(e.response["error"], "No such emoji", reaction)
-                    elif e.response["error"] in ("no_reaction", "already_reacted"):
-                        pass
-                    else:
-                        print(e)
+    flags = 0 if case_sensitive else re.IGNORECASE
+    if re.search(regex, message["text"], flags=flags):
+        for reaction in reactions:
+            try:
+                app.client.reactions_add(
+                    channel=message["channel"],
+                    timestamp=message["ts"],
+                    name=reaction
+                )
+            except SlackApiError as e:
+                if e.response["error"] == "invalid_name":
+                    raise ValueError(e.response["error"], "No such emoji", reaction)
+                elif e.response["error"] in ("no_reaction", "already_reacted"):
+                    pass
+                else:
+                    print(e)
 
 
 """ ---------- APP MENTIONS ---------- """
