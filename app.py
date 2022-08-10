@@ -62,7 +62,9 @@ def handle_message_events(body, logger, say):
     reaction_trigger(message, "birthday", ["birthday", "tada"])
     reaction_trigger(message, "panic", ["mildpanic"])
     reaction_trigger(message, "PANIC", ["mild-panic-intensifies"], case_sensitive=True)
-    reaction_trigger(message, "vampire", ["vampire"], case_sensitive=False)
+    reaction_trigger(message, "vampire", ["vampire"])
+    reaction_trigger(message, "goodnight", "sleeping")
+    reaction_trigger(message, "nap", "sleeping")
 
     msg_action_trigger(message, "bonk", bonk_someone)
 
