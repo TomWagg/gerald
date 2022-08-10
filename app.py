@@ -630,7 +630,33 @@ def is_it_a_birthday():
             for person in birthday_people:
                 # say happy birthday to each person (handle if there are more than one)
                 if user["name"] == person:
-                    say_happy_birthday(user["id"])
+
+                    # do something special if it is Gerald's birthday
+                    if person == "gerald":
+                        gif_url = ("https://raw.githubusercontent.com/TomWagg/gerald/main/img"
+                                   "/birthday_gifs/gerald.gif")
+
+                        # post the message with the GIF
+                        app.client.chat_postMessage(channel=find_channel("bot-test"),
+                                                    text=":birthday: A special birthday :birthday:",
+                                                    blocks=[
+                                                        {
+                                                            "type": "section",
+                                                            "text": {
+                                                                "type": "mrkdwn",
+                                                                "text": ("Hey psst, I'm sure you've got a "
+                                                                         "surprise party in the works but "
+                                                                         "just in case you forgot..."),
+                                                            }
+                                                        },
+                                                        {
+                                                            "type": "image",
+                                                            "image_url": gif_url,
+                                                            "alt_text": "birthday"
+                                                        }
+                                                    ])
+                    else:
+                        say_happy_birthday(user["id"])
     else:
         print("No birthdays today!")
 
