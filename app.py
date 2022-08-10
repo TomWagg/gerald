@@ -1255,7 +1255,7 @@ def insert_british_consternation():
                "Everything is very much not tickety-boo!", "Oh dearie me!",
                "My profuse apologies but we've got a problem!",
                "I haven't the foggiest idea what just happened!",
-               ("Oh dear, one of my servers just imploded so that can't be a terribly positive:"
+               ("Oh dear, one of my servers just imploded so that can't be a terribly positive "
                 "sign :exploding_head:"),
                "Ouch! Did you know errors hurt me? :smiling_face_with_tear:"]
     return np.random.choice(choices)
