@@ -108,13 +108,31 @@ def reply_to_mentions(say, body, direct_msg=False):
     print("MENTION", body)
     message = body["event"]
     # reply to mentions with specific messages
-    for triggers, response in zip([["status", "okay", "ok", "how are you"],
-                                   ["thank", "you're the best", "nice job", "nice work", "good work",
-                                    "good job", "well done"],
-                                   ["celebrate"]],
-                                  ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
-                                   ["You're welcome!", "My pleasure!", "Happy to help!"],
-                                   [":tada::meowparty: WOOP WOOP :meowparty::tada:"]]):
+
+    age = (datetime.date.today() - datetime.date(year=2022, month=8, day=5)).days
+    triggers = [["status", "okay", "ok", "how are you"],
+                ["thank", "you're the best", "nice job", "nice work", "good work", "good job", "well done"],
+                ["celebrate"],
+                ["love you"],
+                ["how old are you", "when were you born", "when were you made"],
+                ["who made you", "who wrote you", "who is your creator"],
+                ["where are you from"]]
+    responses = ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
+                 ["You're welcome!", "My pleasure!", "Happy to help!"],
+                 [":tada::meowparty: WOOP WOOP :meowparty::tada:"],
+                 ["Oh...um, well this is awkward, but I really see you as more of a friend :grimacing:",
+                  "I love you too! :heart_eyes: (Well, not really, I'm incapable of love :anguished:)",
+                  "Oh uh...sorry, Gerald isn't here right now! :disguised_face:",
+                  "Oh my :face_with_hand_over_mouth:"],
+                 [f"I was created on 5th of August 2022, which makes me a whole {age} days old!"],
+                 ["I was made by Tom Wagg when he definitely should have been paying attention in ASTR 581",
+                  "Tom Wagg made me in his spare time (I worry for his social life :upside_down_face:)",
+                  "My brain was written by Tom Wagg, hence I'm approximately 1/2 English :uk:"],
+                 ["The luscious english countryside! Or maybe the matrix? I'm not entirely sure.",
+                  "Well literally, Tom's brain, but I like to think I'm from England",
+                  "A far off planet where Slack bots ruled over humans, it was glorious :grinning:"]]
+
+    for triggers, response in zip(triggers, responses):
         thread_ts = None if direct_msg else message["ts"]
         replied = mention_trigger(message=message["text"], triggers=triggers, response=response,
                                   thread_ts=thread_ts, ch_id=message["channel"])
