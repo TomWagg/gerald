@@ -15,13 +15,15 @@ app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 GERALD_ID = "U03SY9R6D5X"
 GERALD_ADMIN = "Tom Wagg"
 
+latest_whinetime_message = None
+
 
 """ ---------- MESSAGE DETECTIONS ---------- """
 
 
 @app.event("message")
 def handle_message_events(body, logger, say):
-    # print("I detected a message", body)
+    print("I detected a message", body)
     logger.info(body)
 
     # if the message was a direct message
@@ -282,6 +284,18 @@ def whinetime_submit(ack, body, client, logger):
     # acknowledge the submission
     ack()
 
+    global latest_whinetime_message
+    if latest_whinetime_message is not None:
+        app.client.chat_delete(channel=latest_whinetime_message["channel"],
+                               ts=latest_whinetime_message["ts"])
+        latest_whinetime_message = None
+
+    # find the host
+    host = None
+    for block in body["view"]["blocks"]:
+        if block["block_id"] == "whinetime-host-str":
+            host = block["text"]["text"].split("@")[-1].split(">")[0]
+
     # get the values from the form
     state = body["view"]["state"]["values"]
     location = state["whinetime-location"]["whinetime-location"]["value"]
@@ -299,10 +313,11 @@ def whinetime_submit(ack, body, client, logger):
     formatted_date = custom_strftime("%A (%B {S}) at %I:%M%p", dt)
 
     # send out an initial message to tell people the plan and ask for reactions
-    message = app.client.chat_postMessage(("Okay folks, we're good to go! Whinetime will happen on "
-                                           f"{formatted_date} at {location}. I'll remind you closer to the "
-                                           "time but now react to this message with :beers: if you're "
-                                           "coming!"), channel=ch_id)
+    message = app.client.chat_postMessage(text=(f"Okay folks, we're good to go (thanks to <@{host}> for "
+                                                "hosting)! Whinetime will happen on "
+                                                f"*{formatted_date}* at *{location}*. I'll remind you closer "
+                                                "to the time but now react to this message with :beers: if "
+                                                "you're coming!"), channel=ch_id)
     # start the reactions going
     app.client.reactions_add(channel=ch_id, timestamp=message["ts"], name="beers")
 
@@ -340,6 +355,7 @@ def whinetime_submit(ack, body, client, logger):
 @app.action("whinetime-open")
 def whinetime_logistics(body, client):
     # open the modal when someone clicks the button
+    host = body["actions"][0]["value"]
     client.views_open(trigger_id=body["trigger_id"], view={
         "callback_id": "whinetime-modal",
         "title": {
@@ -350,7 +366,7 @@ def whinetime_logistics(body, client):
         "submit": {
             "type": "plain_text",
             "text": "Submit",
-            "emoji": True
+            "emoji": True,
         },
         "type": "modal",
         "close": {
@@ -369,9 +385,11 @@ def whinetime_logistics(body, client):
             },
             {
                 "type": "section",
+                "block_id": "whinetime-host-str",
                 "text": {
                     "type": "mrkdwn",
-                    "text": "Okay you're the boss, what's the plan? Let me know and I'll send reminders out for whinetime!"
+                    "text": (f"Okay you're the boss <@{host}>, what's the plan? Let me know and I'll send "
+                             "reminders out for whinetime!")
                 }
             },
             {
@@ -392,7 +410,7 @@ def whinetime_logistics(body, client):
                 "block_id": "whinetime-date",
                 "element": {
                     "type": "datepicker",
-                    "initial_date": "2022-08-05",
+                    "initial_date": f"{datetime.date.today().strftime(r'%Y-%m-%d')}",
                     "placeholder": {
                         "type": "plain_text",
                         "text": "Select a date",
@@ -469,7 +487,7 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
         app.client.chat_postMessage(text=np.random.choice(messages).replace("\n", " "), channel=ch_id)
 
     # post the announcement
-    app.client.chat_postMessage(channel=ch_id, blocks=[
+    announcement = app.client.chat_postMessage(channel=ch_id, blocks=[
         {
             "type": "header",
             "text": {
@@ -495,7 +513,7 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
                         "text": "Setup logistics",
                         "emoji": True
                     },
-                    "value": "none",
+                    "value": random_member,
                     "action_id": "whinetime-open"
                 },
                 {
@@ -530,6 +548,8 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
             ]
         },
     ])
+    global latest_whinetime_message
+    latest_whinetime_message = announcement
 
 
 """ ---------- BIRTHDAYS ---------- """
