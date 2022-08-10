@@ -972,7 +972,7 @@ def reply_recent_papers(message, direct_msg=False):
 
             # same preface stuff as above but with many papers
             preface = (f"The most {n_papers} recent papers from {orcids[i]} were published on the arXiv "
-                       f"{', '.join(time_str)} days ago respectively. Here are the titles and links:")
+                       f"{time_str} days ago respectively. Here are the titles and links:")
 
             # if you supplied tags (so we know their name)
             if not direct_orcids:
