@@ -816,6 +816,7 @@ def my_birthday(message, direct_msg=False):
 
 """ ---------- PUBLICATION ANNOUNCEMENTS ---------- """
 
+
 def reply_recent_papers(message, direct_msg=False):
     """Reply to a message with the most recent papers associated with a particular user or ORCID ID
 
@@ -843,7 +844,7 @@ def reply_recent_papers(message, direct_msg=False):
         tags = re.findall(r"<[^>]*>", message["text"])
 
         # remove Gerald from the tags
-        if GERALD_ID in tags:
+        if f"<@{GERALD_ID}>" in tags:
             tags.remove(f"<@{GERALD_ID}>")
 
         # let people say "my" paper
