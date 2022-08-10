@@ -271,7 +271,7 @@ def new_emoji(body, say):
                               "And that's all the context you're getting :shushing_face:"]
         rand_msg = emoji_add_messages[np.random.randint(len(emoji_add_messages))]
 
-        ch_id = find_channel("bot-test")
+        ch_id = find_channel("random")
         say(f'Someone just added :{body["event"]["name"]}: - {rand_msg}', channel=ch_id)
 
 
@@ -301,7 +301,7 @@ def whinetime_submit(ack, body, client, logger):
     date = state["whinetime-date"]["datepicker-action"]["selected_date"]
     time = state["whinetime-time"]["timepicker-action"]["selected_time"]
 
-    ch_id = find_channel("bot-test")
+    ch_id = find_channel("whinetime")
 
     # convert the information to a datetime object
     year, month, day = list(map(int, date.split("-")))
@@ -455,7 +455,7 @@ def whinetime_re_roll(ack, body, logger):
 
 
 def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
-    ch_id = find_channel("bot-test")
+    ch_id = find_channel("whinetime")
 
     # get all of the members in the channel
     members = app.client.conversations_members(channel=ch_id)["members"]
@@ -567,7 +567,7 @@ def say_happy_birthday(user_id):
     gif_url = f"https://raw.githubusercontent.com/TomWagg/gerald/main/img/birthday_gifs/{gif_id}.gif"
 
     # post the message with the GIF
-    app.client.chat_postMessage(channel=find_channel("bot-test"),
+    app.client.chat_postMessage(channel=find_channel("random"),
                                 text=f":birthday: Happy birthday to <@{user_id}>! :birthday:",
                                 blocks=[
                                     {
@@ -667,7 +667,7 @@ def is_it_a_birthday():
                                    "/birthday_gifs/gerald.gif")
 
                         # post the message with the GIF
-                        app.client.chat_postMessage(channel=find_channel("bot-test"),
+                        app.client.chat_postMessage(channel=find_channel("random"),
                                                     text=":birthday: A special birthday :birthday:",
                                                     blocks=[
                                                         {
