@@ -278,7 +278,7 @@ def new_emoji(body, say):
 
 
 @app.view("whinetime-modal")
-def whinetime_submit(ack, body, say, client, logger):
+def whinetime_submit(ack, body, client, logger):
     # acknowledge the submission
     ack()
 
@@ -299,7 +299,12 @@ def whinetime_submit(ack, body, say, client, logger):
     formatted_date = custom_strftime("%A (%B {S}) at %I:%M%p", dt)
 
     # send out an initial message to tell people the plan and ask for reactions
-    say(f"Okay folks, we're good to go! Whinetime will happen on {formatted_date} at {location}. I'll remind you closer to the time but now react to this message with :beers: if you're coming!", channel=ch_id)
+    message = app.client.chat_postMessage(("Okay folks, we're good to go! Whinetime will happen on "
+                                           f"{formatted_date} at {location}. I'll remind you closer to the "
+                                           "time but now react to this message with :beers: if you're "
+                                           "coming!"), channel=ch_id)
+    # start the reactions going
+    app.client.reactions_add(channel=ch_id, timestamp=message["ts"], name="beers")
 
     # calculate some timestamps in the future (I hope)
     day_before = (dt - datetime.timedelta(days=1)).strftime("%s")
