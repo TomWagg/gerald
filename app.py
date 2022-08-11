@@ -23,7 +23,7 @@ latest_whinetime_message = None
 
 @app.event("message")
 def handle_message_events(body, logger, say):
-    print("I detected a message", body)
+    # print("I detected a message", body)
     logger.info(body)
 
     # if the message was a direct message
@@ -106,7 +106,7 @@ def reaction_trigger(message, regex, reactions, case_sensitive=False):
 
 @app.event("app_mention")
 def reply_to_mentions(say, body, direct_msg=False):
-    print("MENTION", body)
+    # print("MENTION", body)
     message = body["event"]
     # reply to mentions with specific messages
 
@@ -1058,7 +1058,6 @@ def any_new_publications():
             # get any papers that were published today
             today_papers = []
             for paper, time in zip(papers, times):
-                print(time)
                 if time == 0:
                     today_papers.append(paper)
 
