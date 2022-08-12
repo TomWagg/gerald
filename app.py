@@ -1234,7 +1234,7 @@ def reply_brain_size(message, direct_msg=False):
 
     # tell whoever asked
     responses = [(f"Well my brain is {brain_size} lines of code long, so don't worry, it'll probably be a "
-                  "couple of years until I'm intelligent enough to replace you :gerald-wink"),
+                  "couple of years until I'm intelligent enough to replace you :gerald-wink:"),
                  (f"Given that my brain is already {brain_size} lines of code long and the rate at which it's"
                   f" growing, it'll probably be around {np.random.randint(2, 10)} years until I am able to "
                   "~take over from you pesky humans~ help you even better! :innocent: :gerald-learning:"),
