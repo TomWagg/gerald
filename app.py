@@ -118,11 +118,11 @@ def reply_to_mentions(say, body, direct_msg=False):
                 ["how old are you", "when were you born", "when were you made"],
                 ["who made you", "who wrote you", "who is your creator"],
                 ["where are you from"]]
-    responses = ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean!",
+    responses = ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean! :gerald-wave:",
                  ["You're welcome!", "My pleasure!", "Happy to help!"],
                  [":tada::meowparty: WOOP WOOP :meowparty::tada:"],
                  ["Oh...um, well this is awkward, but I really see you as more of a friend :grimacing:",
-                  "I love you too! :heart_eyes: (Well, not really, I'm incapable of love :anguished:)",
+                  "I love you too! :heart_eyes: (Well, not really, I'm incapable of love :gerald-confused:)",
                   "Oh uh...sorry, Gerald isn't here right now! :disguised_face:",
                   "Oh my :face_with_hand_over_mouth:"],
                  [f"I was created on 5th of August 2022, which makes me a whole {age} days old!"],
@@ -173,7 +173,7 @@ def reply_to_mentions(say, body, direct_msg=False):
     # send a catch-all message if nothing matches
     thread_ts = None if direct_msg else body["event"]["ts"]
     say(text=(f"{insert_british_consternation()} Okay, good news: I heard you. Bad news: I'm not a very "
-              "smart bot so I don't know what you want from me :shrug::baby::robot_face:"),
+              "smart bot so I don't know what you want from me :shrug::baby::gerald-deceased:"),
         thread_ts=thread_ts, channel=body["event"]["channel"])
 
 
@@ -267,7 +267,7 @@ def new_emoji(body, say):
         emoji_add_messages = ["I'd love to know the backstory on that one :eyes:",
                               "Anyone want to explain this?? :face_with_raised_eyebrow:",
                               "Feel free to put it to use on this message",
-                              "Looks like I've found my new favourite :star_struck:",
+                              "Looks like I've found my new favourite :gerald-love:",
                               "And that's all the context you're getting :shushing_face:"]
         rand_msg = emoji_add_messages[np.random.randint(len(emoji_add_messages))]
 
@@ -342,7 +342,7 @@ def whinetime_submit(ack, body, client, logger):
             channel=ch_id,
             text=("Feeling that Friday afternoon fatigue? You need some #whinetime mate and luckily it's "
                   f"only one hour to go :meowparty::meowparty: Remember it's at {location} this week, "
-                  "hope you guys have fun, bring a souvenir for me!"),
+                  "hope you guys have fun, bring a souvenir for me! :gerald-wave:"),
             post_at=hour_before
         )
         logger.info(result)
@@ -477,7 +477,7 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
     else:
         messages = [("Not whinetime eh? Are you sure? You could be great, you know, whinetime will help you "
                      "on the way to greatness, no doubt about that — no? Well, if you're sure — better "
-                     f"be ~GRYFFINDOR~ <@{random_member}>!"),
+                     f"be ~GRYFFINDOR~ <@{random_member}>! :mage:"),
                     "Okay let's try that again, your whinetime host will be...:drum_with_drumsticks:",
                     "Nevermind, let's choose someone else, how about...:drum_with_drumsticks:",
                     ("Not to worry anonymous citizen, the mantle will be passed on "
@@ -775,7 +775,7 @@ def reply_happy_birthday(message, direct_msg=False):
     thread_ts = None if direct_msg else message["ts"]
     today = datetime.date.today()
     if today.month == 8 and today.day == 5:
-        app.client.chat_postMessage(text="Thank you!! That's so nice of you to remember :relaxed:",
+        app.client.chat_postMessage(text="Thank you!! That's so nice of you to remember :gerald-love:",
                                     channel=message["channel"], thread_ts=thread_ts)
     else:
         app.client.chat_postMessage(text=("Oh um, well thank you, I do appreciate the sentiment...but my "
@@ -808,7 +808,7 @@ def my_birthday(message, direct_msg=False):
                 else:
                     day, month = map(int, birthday.split("/"))
                     dt = datetime.date(day=day, month=month, year=2022)
-                    app.client.chat_postMessage(text=("I know your birthday! :smile: "
+                    app.client.chat_postMessage(text=("I know your birthday! :gerald-search: "
                                                       f"It's {custom_strftime('%B {S}', dt)}"),
                                                 channel=message["channel"], thread_ts=thread_ts)
 
@@ -1201,7 +1201,7 @@ def bonk_someone(message):
     if bonkers is not None:
         person_to_bonk = bonkers[0]
 
-        followups = ["Now go and think about what you've done!",
+        followups = ["Now go and think about what you've done! :gerald-angry:",
                      "Bad grad student, I'll take away your :coffee:!",
                      "You're lucky Asimov made that first law mate...:robot_face::skull:",
                      "There's more where that came from"]
@@ -1234,14 +1234,14 @@ def reply_brain_size(message, direct_msg=False):
 
     # tell whoever asked
     responses = [(f"Well my brain is {brain_size} lines of code long, so don't worry, it'll probably be a "
-                  "couple of years until I'm intelligent enough to replace you :upside_down_face:"),
+                  "couple of years until I'm intelligent enough to replace you :gerald-wink"),
                  (f"Given that my brain is already {brain_size} lines of code long and the rate at which it's"
                   f" growing, it'll probably be around {np.random.randint(2, 10)} years until I am able to "
-                  "~take over from you pesky humans~ help you even better! :innocent:"),
+                  "~take over from you pesky humans~ help you even better! :innocent: :gerald-learning:"),
                  (f"I'm clocking a reasonable {brain_size} lines of code in my brain these days, which "
                   "unfortunately means I'm now over-qualified for reality TV :zany_face:"),
                  (f"I'm still learning but my brain is already {brain_size} lines of "
-                  "code long! :brain::student:")]
+                  "code long! :brain::gerald-learning:")]
 
     thread_ts = None if direct_msg else message["ts"]
     app.client.chat_postMessage(text=np.random.choice(responses),
@@ -1292,7 +1292,7 @@ def find_channel(channel_name):
 
 def suffix(d):
     """ Work out what suffix a date needs """
-    return 'th' if 11 <= d <= 13 else {1: 'st',2: 'nd',3: 'rd'}.get(d % 10, 'th')
+    return 'th' if 11 <= d <= 13 else {1: 'st', 2: 'nd', 3: 'rd'}.get(d % 10, 'th')
 
 
 def custom_strftime(format, t):
