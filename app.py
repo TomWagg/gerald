@@ -83,8 +83,12 @@ def msg_action_trigger(message, triggers, callback, case_sensitive=False):
 def reaction_trigger(message, regex, reactions, case_sensitive=False):
     reactions = np.atleast_1d(reactions)
 
+    # remove emojis from message text, this regex means at least one character that isn't a : between two :
+    anything_between_colons = r":[^:]+:"
+    text = re.sub(anything_between_colons, "--", message["text"])
+
     flags = 0 if case_sensitive else re.IGNORECASE
-    if re.search(regex, message["text"], flags=flags):
+    if re.search(regex, text, flags=flags):
         for reaction in reactions:
             try:
                 app.client.reactions_add(
