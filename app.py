@@ -319,8 +319,8 @@ def whinetime_submit(ack, body, client, logger):
     message = app.client.chat_postMessage(text=(f"Okay folks, we're good to go (thanks to <@{host}> for "
                                                 "hosting)! Whinetime will happen on "
                                                 f"*{formatted_date}* at *{location}*. I'll remind you closer "
-                                                "to the time but now react to this message with :beers: if "
-                                                "you're coming!"), channel=ch_id)
+                                                "to the time but for now react to this message with :beers: "
+                                                "if you're coming!"), channel=ch_id)
     # start the reactions going
     app.client.reactions_add(channel=ch_id, timestamp=message["ts"], name="beers")
 
