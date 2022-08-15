@@ -476,7 +476,7 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
     not_these.append(random_member)
 
     if not reroll:
-        app.client.chat_postMessage(text=("Dumroll please :drum_with_drumsticks:...it's time to pick a "
+        app.client.chat_postMessage(text=("Drumroll please :drum_with_drumsticks:...it's time to pick a "
                                           "whinetime host"), channel=ch_id)
     else:
         messages = [("Not whinetime eh? Are you sure? You could be great, you know, whinetime will help you "
@@ -1097,7 +1097,7 @@ def announce_publication(username, name, papers):
     if user_id is None:
         return
 
-    # choose an randon adjective
+    # choose an random adjective
     adjective = np.random.choice(["Splendid", "Tremendous", "Brilliant",
                                   "Excellent", "Fantastic", "Spectacular"])
 
