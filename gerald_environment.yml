@@ -1,0 +1,11 @@
+name: bolt
+channels:
+  - defaults
+dependencies:
+  - numpy=1.23.1
+  - pip=22.1.2
+  - python=3.10.4
+  - pip:
+    - slack-bolt==1.14.3
+    - apscheduler==3.9.1
+    - ads==0.12.3
