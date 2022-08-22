@@ -31,17 +31,20 @@ def get_ads_papers(query, astronomy_collection=True, past_week=False, allowed_ty
 
     # get the papers
     papers = ads.SearchQuery(q=query, sort="date", fl=["abstract", "author", "citation_count", "doctype",
-                                                       "first_author", "read_count", "title", "bibcode"])
+                                                       "first_author", "read_count", "title", "bibcode",
+                                                       "pubdate"])
 
     papers_dict_list = []
 
     for paper in papers:
         if paper.doctype in allowed_types:
+            year, month, _ = map(int, paper.pubdate.split("-"))
             papers_dict_list.append({
-                "link": "",
+                "link": f"https://ui.adsabs.harvard.edu/abs/{paper.bibcode}/abstract",
                 "title": paper.title[0],
                 "abstract": paper.abstract,
                 "authors": paper.author,
+                "date": datetime.date(year=year, month=month, day=1),
                 "citations": paper.citation_count,
                 "reads": paper.read_count,
             })
@@ -83,5 +86,3 @@ def bold_grad_author(author_string, name):
     # add final underscore so the whole thing is italic
     authors = authors[:-2] + "_"
     return authors
-
-# get_ads_papers('author:"Tzanidakis,Anastasios"', past_week=True)

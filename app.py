@@ -8,7 +8,7 @@ import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from arxiv import bold_grad_author, get_n_most_recent_papers
+from ads_query import bold_grad_author, get_ads_papers
 
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
@@ -604,7 +604,7 @@ def get_all_birthdays():
             # ignore any comment lines
             if grad[0] == "#":
                 continue
-            name, _, _, birthday, _ = grad.split(",")
+            name, _, _, birthday, _, _ = grad.split("|")
 
             # if we don't have their birthday just write None
             if birthday.rstrip() == "-":
@@ -709,7 +709,7 @@ def closest_birthday():
             # ignore comment lines
             if grad[0] == "#":
                 continue
-            name, username, _, birthday, _ = grad.split(",")
+            name, username, _, birthday, _, _ = grad.split("|")
 
             # ignore people without birthdays listed
             if birthday.rstrip() == "-":
@@ -798,7 +798,7 @@ def my_birthday(message, direct_msg=False):
     thread_ts = None if direct_msg else message["ts"]
     with open("data/grad_info.csv") as birthday_file:
         for grad in birthday_file:
-            _, username, _, birthday, _ = grad.split(",")
+            _, username, _, birthday, _, _ = grad.split("|")
             if username == my_username:
                 if birthday == "-":
                     app.client.chat_postMessage(text=(f"{insert_british_consternation()} This is a little "
@@ -821,7 +821,7 @@ def my_birthday(message, direct_msg=False):
 
 
 def reply_recent_papers(message, direct_msg=False):
-    """Reply to a message with the most recent papers associated with a particular user or ORCID ID
+    """Reply to a message with the most recent papers associated with a particular user
 
     Parameters
     ----------
@@ -830,10 +830,9 @@ def reply_recent_papers(message, direct_msg=False):
     direct_msg : `bool`, optional
         Whether the message was a direct message (and thus whether to use a thread), by default False
     """
-    # search for ORCID IDs in the message
-    orcids = re.findall(r"\d{4}-\d{4}-\d{4}-\d{4}", message["text"])
+    queries = []
     names = []
-    direct_orcids = True
+    direct_queries = True
 
     thread_ts = None if direct_msg else message["ts"]
 
@@ -841,8 +840,8 @@ def reply_recent_papers(message, direct_msg=False):
     n_papers = 1 if len(numbers) == 0 else int(numbers[0])
 
     # if don't find any then look for users instead
-    if len(orcids) == 0:
-        direct_orcids = False
+    if len(queries) == 0:
+        direct_queries = False
         # find any tags
         tags = re.findall(r"<[^>]*>", message["text"])
 
@@ -858,61 +857,51 @@ def reply_recent_papers(message, direct_msg=False):
         if len(tags) > 0:
             # go through each of them
             for tag in tags:
-                # convert the tag to an orcid and a name
-                orcid, name = get_orcid_name_from_user_id(tag.replace("<@", "").replace(">", ""))
+                # convert the tag to an query and a name
+                query, name = get_query_name_from_user_id(tag.replace("<@", "").replace(">", ""))
+                print(query, name)
 
-                # if we don't know this person's ORCID then crash out with a message
-                if orcid is None:
-                    app.client.chat_postMessage(text=(f"{insert_british_consternation()} I think you asked "
-                                                      f"for most recent papers but I don't know {tag}'s "
-                                                      "ORCID ID sorry :persevere:. You can add it to "
-                                                      "<https://github.com/UW-Astro-Grads/GradWiki/wiki/Community%3APhone-List|the list> in the wiki though! :slightly_smiling_face:"),
-                                                channel=message["channel"], thread_ts=thread_ts)
-                    return
-                else:
-                    # otherwise just append info
-                    orcids.append(orcid)
-                    names.append(name)
+                # append info
+                queries.append(query)
+                names.append(name)
 
-    # if we found no orcids through all of that then crash out with a message
-    if len(orcids) == 0:
+    # if we found no queries through all of that then crash out with a message
+    if len(queries) == 0:
         app.client.chat_postMessage(text=(f"{insert_british_consternation()} I think you asked for some "
-                                          "recent papers but I couldn't find any ORCID IDs or user tags in "
+                                          "recent papers but I couldn't find any ADS queries or user tags in "
                                           "the message sorry :pleading_face:"),
                                     channel=message["channel"], thread_ts=thread_ts)
         return
 
     # go through each orcid
-    for i in range(len(orcids)):
+    for i in range(len(queries)):
         # get the most recent n papers
-        papers, times = get_n_most_recent_papers(orcids[i], n=n_papers)
-        if papers is None or times is None:
+        papers = get_ads_papers(query=queries[i])
+        if papers is None:
             app.client.chat_postMessage(text=("Terribly sorry old chap but it seems that there's a problem "
-                                              f"with that ORCID ID ({orcids[i]}) :hmmmmm:. Either the ID is "
-                                              "invalid _or_ the owner has not linked it to their arXiv "
-                                              "account. Encourage them to do so through "
-                                              "<https://arxiv.org/help/orcid|this link>!"),
+                                              f"with that ADS query ({queries[i]}) :hmmmmm:. Check you don't"
+                                              " have a typo of some sort!"),
                                         channel=message["channel"], thread_ts=thread_ts)
             return
 
         # if it is just one paper then give lots of details
         if n_papers == 1:
-            paper, time = papers[0], times[0]
+            paper = papers[0]
 
             # create a brief message for before the paper
-            preface = f"The most recent paper from {orcids[i]} was published on the arXiv {time} days ago"
+            preface = f"Here's the most recent paper for this query: {queries[i]}"
             authors = f"_Authors: {paper['authors']}_"
 
             # if you supplied tags (so we know their name)
-            if not direct_orcids:
+            if not direct_queries:
                 # use the tag in the pre-message
-                preface = f"The most recent paper from {tags[i]} was published on the arXiv {time} days ago"
+                preface = f"Here's the most recent paper from {tags[i]}"
 
-                # create an author list, adding each but BOLDING the author that matches the orcid
+                # create an author list, adding each but BOLDING the author that matches the grad
                 authors = bold_grad_author(paper['authors'], names[i])
 
             # format the date nicely
-            date_formatted = custom_strftime("%B {S} %Y", paper['date'])
+            date_formatted = custom_strftime("%B %Y", paper['date'])
 
             # send the pre-message then a big one with the paper info
             app.client.chat_postMessage(text=preface, channel=message["channel"], thread_ts=thread_ts)
@@ -940,7 +929,11 @@ def reply_recent_papers(message, direct_msg=False):
                                                     },
                                                     {
                                                         "type": "mrkdwn",
-                                                        "text": f"<{paper['link']}|arXiv link>"
+                                                        "text": f"<{paper['link']}|ADS link>"
+                                                    },
+                                                    {
+                                                        "type": "mrkdwn",
+                                                        "text": f"Cited {paper['citations']} times so far"
                                                     }
                                                 ]
                                             },
@@ -954,6 +947,7 @@ def reply_recent_papers(message, direct_msg=False):
                                         ],
                                         channel=message["channel"], thread_ts=thread_ts)
         else:
+            papers = papers[:n_papers]
             # if it's multiple papers then give a condensed list
             blocks = [
                 [
@@ -962,27 +956,21 @@ def reply_recent_papers(message, direct_msg=False):
                         "text": {
                             "type": "mrkdwn",
                             "text": (f"<{paper['link']}|*{paper['title']}*> - "
-                                     f"_{paper['authors'].split(',')[0].split(' ')[-1]} "
-                                     f"et al. ({paper['date'].year})_")
+                                     f"_{paper['authors'][0].split(' ')[0]} "
+                                     f"et al. ({paper['date'].year})_ - Cited {paper['citations']} times")
                         }
                     }
                 ] for paper in papers
             ]
             blocks = list(np.ravel(blocks))
 
-            # join up the times with commas and a final "and"
-            time_str = ", ".join([str(time) for time in times[:-1]])
-            time_str = time_str.rstrip() + f" and {times[-1]}"
-
             # same preface stuff as above but with many papers
-            preface = (f"The most {n_papers} recent papers from {orcids[i]} were published on the arXiv "
-                       f"{time_str} days ago respectively. Here are the titles and links:")
+            preface = (f"Here's the {n_papers} most recent papers for the query: {queries[i]}")
 
             # if you supplied tags (so we know their name)
-            if not direct_orcids:
+            if not direct_queries:
                 # use the tag in the pre-message
-                preface = (f"The most {n_papers} recent papers from {tags[i]} were published on the arXiv "
-                           f"{time_str} days ago respectively. Here are the titles and links:")
+                preface = (f"Here's the {n_papers} most recent papers from {tags[i]}")
 
             # post the messages
             app.client.chat_postMessage(text=preface, channel=message["channel"], thread_ts=thread_ts)
@@ -990,8 +978,8 @@ def reply_recent_papers(message, direct_msg=False):
                                         channel=message["channel"], thread_ts=thread_ts, unfurl_links=False)
 
 
-def get_orcid_name_from_user_id(user_id):
-    """Convert a user ID to an ORCID ID and name
+def get_query_name_from_user_id(user_id):
+    """Convert a user ID to an ADS query and name
 
     Parameters
     ----------
@@ -1000,8 +988,8 @@ def get_orcid_name_from_user_id(user_id):
 
     Returns
     -------
-    orcid : `str`
-        ORCID ID
+    query : `str`
+        ADS Query
 
     name : `str`
         Person's full name
@@ -1010,25 +998,26 @@ def get_orcid_name_from_user_id(user_id):
     users = app.client.users_list()["members"]
 
     # find the matching username for the ID
-    orcid_username = None
+    search_username = None
     for user in users:
         if user["id"] == user_id:
-            orcid_username = user["name"]
+            search_username = user["name"]
             break
 
     # go through the grad info file
-    with open("data/grad_info.csv") as orcid_file:
-        for grad in orcid_file:
+    with open("data/grad_info.csv") as grad_file:
+        for grad in grad_file:
             if grad[0] == "#":
                 continue
-            name, username, _, _, orcid = grad.split(",")
+            name, username, _, _, _, ads = grad.rstrip().split("|")
 
             # find the matching username and return the info (if it exists)
-            if username == orcid_username:
-                if orcid == "-":
-                    return None, name
+            if username == search_username:
+                if ads == "-":
+                    split_name = name.split(" ")
+                    return f'author:"{split_name[-1]}, {split_name[0][0]}"', name
                 else:
-                    return orcid.rstrip(), name
+                    return ads.rstrip(), name
 
     # return None if can't find them in the table
     return None, None
@@ -1047,25 +1036,19 @@ def any_new_publications():
             if grad[0] == "#":
                 continue
 
-            name, username, _, _, orcid = grad.split(",")
-            orcid = orcid.rstrip()
+            name, username, _, _, _, query = grad.rstrip().split("|")
 
-            # skip anyone who doesn't have an orcid ID
-            if orcid == "-":
+            # default to a simple name query
+            if query == "-":
+                split_name = name.split(" ")
+                query = f'author:"{split_name[-1]}, {split_name[0][0]}"'
+
+            # get the papers from the last week
+            weekly_papers = get_ads_papers(query, past_week=True)
+
+            # skip anyone who has a bad query
+            if weekly_papers is None:
                 continue
-
-            # get the latest 3 papers from this person (I'm assuming no one will publish more than 3 a day!)
-            papers, times = get_n_most_recent_papers(orcid, 3)
-
-            # skip anyone who has a bad ORCID ID
-            if papers is None or times is None:
-                continue
-
-            # get any papers that were published in the last week
-            weekly_papers = []
-            for paper, time in zip(papers, times):
-                if time < 7:
-                    weekly_papers.append(paper)
 
             # if this person has one then announce it!
             if len(weekly_papers) > 0:
@@ -1076,7 +1059,7 @@ def any_new_publications():
                     # send an announcement and remember to not do that next time
                     app.client.chat_postMessage(text=("It's time for our weekly paper round up, let's see "
                                                       "what everyone's been publishing in this last week!"),
-                                                channel=find_channel("random"))
+                                                channel=find_channel("bot-test"))
                     initial_announcement = True
                 announce_publication(username, name, weekly_papers)
 
@@ -1195,7 +1178,7 @@ def announce_publication(username, name, papers):
     abstract_blocks = list(np.ravel(abstract_blocks))
 
     # find the channel and send the initial message
-    channel = find_channel("random")
+    channel = find_channel("bot-test")
     message = app.client.chat_postMessage(text="Congrats on your new paper(s)!",
                                           blocks=blocks, channel=channel, unfurl_links=False)
 
