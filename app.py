@@ -1035,8 +1035,10 @@ def get_orcid_name_from_user_id(user_id):
 
 
 def any_new_publications():
-    """ Check whether any new publications by grad students are out """
+    """ Check whether any new publications by grad students are out in the past week """
     no_new_papers = True
+
+    initial_announcement = False
 
     # go through the file of grads
     with open("data/grad_info.csv") as grad_file:
@@ -1059,16 +1061,20 @@ def any_new_publications():
             if papers is None or times is None:
                 continue
 
-            # get any papers that were published today
-            today_papers = []
+            # get any papers that were published in the last week
+            weekly_papers = []
             for paper, time in zip(papers, times):
-                if time == 0:
-                    today_papers.append(paper)
+                if time < 7:
+                    weekly_papers.append(paper)
 
             # if this person has one then announce it!
-            if len(today_papers) > 0:
+            if len(weekly_papers) > 0:
                 no_new_papers = False
-                announce_publication(username, name, today_papers)
+                if not initial_announcement:
+                    app.client.chat_postMessage(text=("It's time for our weekly paper round up, let's see "
+                                                      "what everyone's been publishing in this last week!"),
+                                                channel=find_channel("bot-test"))
+                announce_publication(username, name, weekly_papers)
 
     if no_new_papers:
         print("No new papers!")
