@@ -1070,10 +1070,14 @@ def any_new_publications():
             # if this person has one then announce it!
             if len(weekly_papers) > 0:
                 no_new_papers = False
+
+                # if Gerald hasn't announced that he's looking at papers yet
                 if not initial_announcement:
+                    # send an announcement and remember to not do that next time
                     app.client.chat_postMessage(text=("It's time for our weekly paper round up, let's see "
                                                       "what everyone's been publishing in this last week!"),
                                                 channel=find_channel("bot-test"))
+                    initial_announcement = True
                 announce_publication(username, name, weekly_papers)
 
     if no_new_papers:
@@ -1109,12 +1113,12 @@ def announce_publication(username, name, papers):
 
     # if it's just one then write some messages to them
     if len(papers) == 1:
-        preface = f"Look what I found on the arXiv this morning :tada: {adjective} work <@{user_id}> :clap:"
+        preface = f"Look what I found! :gerald-search::tada: {adjective} work <@{user_id}> :clap:"
         outro = ("I put the abstract in the thread for anyone interested in learning more "
                  f"- again, a big congratulations to <@{user_id}> for this awesome paper")
     else:
         # edit the messages if there is more than one paper
-        preface = (f"Look what I found on the arXiv this morning :tada: Not 1 but {len(papers)} new papers "
+        preface = (f"Look what I found! :gerald-search::tada: Not 1 but {len(papers)} new papers "
                    f"from <@{user_id}>!! :clap::scream:")
         outro = ("I put the abstracts in the thread for anyone interested in learning more "
                  f"- again, a big congratulations to <@{user_id}> for these awesome papers")
@@ -1320,7 +1324,9 @@ def every_morning():
         start_whinetime_workflow()
 
     is_it_a_birthday()
-    any_new_publications()
+
+    if the_day == "Wednesday":
+        any_new_publications()
 
 
 # start Gerald
