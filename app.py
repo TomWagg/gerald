@@ -859,7 +859,7 @@ def reply_recent_papers(message, direct_msg=False):
             for tag in tags:
                 # convert the tag to an query and a name
                 query, name = get_query_name_from_user_id(tag.replace("<@", "").replace(">", ""))
-                print(query, name)
+                print("ADS query for:", query, name)
 
                 # append info
                 queries.append(query)
@@ -1009,13 +1009,17 @@ def get_query_name_from_user_id(user_id):
         for grad in grad_file:
             if grad[0] == "#":
                 continue
-            name, username, _, _, _, ads = grad.rstrip().split("|")
+            name, username, _, _, orcid, ads = grad.rstrip().split("|")
 
             # find the matching username and return the info (if it exists)
             if username == search_username:
                 if ads == "-":
-                    split_name = name.split(" ")
-                    return f'author:"{split_name[-1]}, {split_name[0][0]}"', name
+                    if orcid != "-":
+                        query = f'orcid:{orcid}'
+                    else:
+                        split_name = name.split(" ")
+                        query = f'author:"{split_name[-1]}, {split_name[0][0]}"'
+                    return query, name
                 else:
                     return ads.rstrip(), name
 
@@ -1036,12 +1040,15 @@ def any_new_publications():
             if grad[0] == "#":
                 continue
 
-            name, username, _, _, _, query = grad.rstrip().split("|")
+            name, username, _, _, orcid, query = grad.rstrip().split("|")
 
-            # default to a simple name query
+            # default to a simple orcid/name query depending on what is available
             if query == "-":
-                split_name = name.split(" ")
-                query = f'author:"{split_name[-1]}, {split_name[0][0]}"'
+                if orcid != "-":
+                    query = f'orcid:{orcid}'
+                else:
+                    split_name = name.split(" ")
+                    query = f'author:"{split_name[-1]}, {split_name[0][0]}"'
 
             # get the papers from the last week
             weekly_papers = get_ads_papers(query, past_week=True)
