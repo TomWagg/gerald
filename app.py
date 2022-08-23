@@ -332,8 +332,8 @@ def whinetime_submit(ack, body, client, logger):
     try:
         result = client.chat_scheduleMessage(
             channel=ch_id,
-            text=("Only one day to go until #whinetime! :wine_glass: Don't forget to react to the message "
-                  "above if you're coming"),
+            text=(f"Only one day to go until <#{find_channel('whinetime')}|whinetime>! :wine_glass: "
+                  "Don't forget to react to the message above if you're coming"),
             post_at=day_before
         )
         logger.info(result)
@@ -344,7 +344,8 @@ def whinetime_submit(ack, body, client, logger):
     try:
         result = client.chat_scheduleMessage(
             channel=ch_id,
-            text=("Feeling that Friday afternoon fatigue? You need some #whinetime mate and luckily it's "
+            text=("Feeling that Friday afternoon fatigue? You need some "
+                  f"<#{find_channel('whinetime')}|whinetime> mate and luckily it's "
                   f"only one hour to go :meowparty::meowparty: Remember it's at {location} this week, "
                   "hope you guys have fun, bring a souvenir for me! :gerald-wave:"),
             post_at=hour_before
