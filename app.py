@@ -884,6 +884,12 @@ def reply_recent_papers(message, direct_msg=False):
                                               " have a typo of some sort!"),
                                         channel=message["channel"], thread_ts=thread_ts)
             return
+        if len(papers) == 0:
+            app.client.chat_postMessage(text=("Sorry but I couldn't find any papers for this query!"
+                                              ":gerald-search::gerald-confused: If you think there should be"
+                                              " some results then make sure you don't have a typo!"),
+                                        channel=message["channel"], thread_ts=thread_ts)
+            return
 
         # if it is just one paper then give lots of details
         if n_papers == 1:
