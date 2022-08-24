@@ -58,7 +58,7 @@ def handle_message_events(body, logger, say):
 
     reaction_trigger(message, r"\btom\b", "tom")
     reaction_trigger(message, r"\bundergrad\b", "underage")
-    reaction_trigger(message, r"\bgerald\b", ["gerald", "eyes"])
+    # reaction_trigger(message, r"\bgerald\b", ["gerald", "eyes"])
     reaction_trigger(message, r"\bbirthday\b", ["birthday", "tada"])
     reaction_trigger(message, r"\bpanic\b", ["mildpanic"])
     reaction_trigger(message, r"\bPANIC\b", ["mild-panic-intensifies"], case_sensitive=True)
