@@ -357,7 +357,9 @@ def whinetime_submit(ack, body, client, logger):
 
 
 @app.action("whinetime-open")
-def whinetime_logistics(body, client):
+def whinetime_logistics(ack, body, client):
+    ack()
+
     # open the modal when someone clicks the button
     host = body["actions"][0]["value"]
     client.views_open(trigger_id=body["trigger_id"], view={
