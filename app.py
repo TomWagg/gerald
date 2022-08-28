@@ -1073,7 +1073,7 @@ def any_new_publications():
                     # send an announcement and remember to not do that next time
                     app.client.chat_postMessage(text=("It's time for our weekly paper round up, let's see "
                                                       "what everyone's been publishing in this last week!"),
-                                                channel=find_channel("bot-test"))
+                                                channel=find_channel("random"))
                     initial_announcement = True
                 announce_publication(username, name, weekly_papers)
 
@@ -1192,7 +1192,7 @@ def announce_publication(username, name, papers):
     abstract_blocks = list(np.ravel(abstract_blocks))
 
     # find the channel and send the initial message
-    channel = find_channel("bot-test")
+    channel = find_channel("random")
     message = app.client.chat_postMessage(text="Congrats on your new paper(s)!",
                                           blocks=blocks, channel=channel, unfurl_links=False)
 
