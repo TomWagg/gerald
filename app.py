@@ -326,7 +326,7 @@ def whinetime_submit(ack, body, client, logger):
 
     # calculate some timestamps in the future (I hope)
     day_before = (dt - datetime.timedelta(days=1)).strftime("%s")
-    hour_before = (dt - datetime.timedelta(hours=1)).strftime("%s")
+    hour_before = (dt - datetime.timedelta(hours=7)).strftime("%s")
 
     # attempt to send reminders (using Try because people may be too close to the time)
     try:
@@ -346,7 +346,7 @@ def whinetime_submit(ack, body, client, logger):
             channel=ch_id,
             text=("Feeling that Friday afternoon fatigue? You need some "
                   f"<#{find_channel('whinetime')}|whinetime> mate and luckily it's "
-                  f"only one hour to go :meowparty::meowparty: Remember it's at {location} this week, "
+                  f"a couple of hours to go :meowparty::meowparty: Remember it's at {location} this week, "
                   "hope you guys have fun, bring a souvenir for me! :gerald-wave:"),
             post_at=hour_before
         )
