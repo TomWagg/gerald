@@ -602,7 +602,7 @@ def get_all_birthdays():
     """
     # open the file with the birthdays
     info = []
-    with open("data/grad_info.csv") as birthday_file:
+    with open("private_data/grad_info.csv") as birthday_file:
         for grad in birthday_file:
             # ignore any comment lines
             if grad[0] == "#":
@@ -707,7 +707,7 @@ def closest_birthday():
     closest_time = np.inf
 
     # go through the birthday list
-    with open("data/grad_info.csv") as birthdays:
+    with open("private_data/grad_info.csv") as birthdays:
         for grad in birthdays:
             # ignore comment lines
             if grad[0] == "#":
@@ -799,7 +799,7 @@ def my_birthday(message, direct_msg=False):
             my_username = user["name"]
 
     thread_ts = None if direct_msg else message["ts"]
-    with open("data/grad_info.csv") as birthday_file:
+    with open("private_data/grad_info.csv") as birthday_file:
         for grad in birthday_file:
             _, username, _, birthday, _, _ = grad.split("|")
             if username == my_username:
@@ -1014,7 +1014,7 @@ def get_query_name_from_user_id(user_id):
             break
 
     # go through the grad info file
-    with open("data/grad_info.csv") as grad_file:
+    with open("private_data/grad_info.csv") as grad_file:
         for grad in grad_file:
             if grad[0] == "#":
                 continue
@@ -1043,7 +1043,7 @@ def any_new_publications():
     initial_announcement = False
 
     # go through the file of grads
-    with open("data/grad_info.csv") as grad_file:
+    with open("private_data/grad_info.csv") as grad_file:
         for grad in grad_file:
             # skip any comments
             if grad[0] == "#":

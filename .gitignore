@@ -1,3 +1,4 @@
 tokens.sh
-data/
+private_data/*
+!private_data/README.md
 __pycache__/
