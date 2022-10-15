@@ -9,6 +9,7 @@ import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from ads_query import bold_grad_author, get_ads_papers
+import whinetime as wt
 
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
@@ -286,6 +287,9 @@ def new_emoji(body, say):
 def whinetime_submit(ack, body, client, logger):
     # acknowledge the submission
     ack()
+    
+    # switch to the next host for next time
+    wt.rotate_hosts()
 
     global latest_whinetime_message
     if latest_whinetime_message is not None:
@@ -332,7 +336,7 @@ def whinetime_submit(ack, body, client, logger):
     try:
         result = client.chat_scheduleMessage(
             channel=ch_id,
-            text=(f"Only one day to go until <#{find_channel('whinetime')}|whinetime>! :wine_glass: "
+            text=(f"Only one day to go until <#{ch_id}|whinetime>! :wine_glass: "
                   "Don't forget to react to the message above if you're coming"),
             post_at=day_before
         )
@@ -344,8 +348,8 @@ def whinetime_submit(ack, body, client, logger):
     try:
         result = client.chat_scheduleMessage(
             channel=ch_id,
-            text=("Feeling that Friday afternoon fatigue? You need some "
-                  f"<#{find_channel('whinetime')}|whinetime> mate and luckily it's "
+            text=("Feeling that Friday fatigue? You need some "
+                  f"<#{ch_id}|whinetime> mate and luckily it's "
                   f"a couple of hours to go :meowparty::meowparty: Remember it's at {location} this week, "
                   "hope you guys have fun, bring a souvenir for me! :gerald-wave:"),
             post_at=hour_before
@@ -458,25 +462,19 @@ def whinetime_re_roll(ack, body, logger):
     ack()
     logger.info(body)
     app.client.chat_delete(channel=body["container"]["channel_id"], ts=body["container"]["message_ts"])
-    start_whinetime_workflow(reroll=True, not_these=body["actions"][0]["value"].split(","))
+    wt.rotate_hosts()
+    start_whinetime_workflow(reroll=True)
 
 
-def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
+def start_whinetime_workflow(reroll=False):
     ch_id = find_channel("whinetime")
 
-    # get all of the members in the channel
-    members = app.client.conversations_members(channel=ch_id)["members"]
-
-    # choose someone random (but NOT Gerald lol)
-    members = list(set(members) - set([GERALD_ID]) - set(not_these))
-    if members == []:
-        app.client.chat_postMessage(text=(f"{insert_british_consternation()} I've tried everyone in the "
-                                          "channel and it seems no one is free to host! "
-                                          ":smiling_face_with_tear:"), channel=ch_id)
-        return
-
-    random_member = np.random.choice(members)
-    not_these.append(random_member)
+    host = wt.get_next_host()
+    host_id = None
+    users = app.client.users_list()["members"]
+    for user in users:
+        if user["name"] == host:
+            host_id = user["id"]
 
     if not reroll:
         app.client.chat_postMessage(text=("Drumroll please :drum_with_drumsticks:...it's time to pick a "
@@ -484,7 +482,7 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
     else:
         messages = [("Not whinetime eh? Are you sure? You could be great, you know, whinetime will help you "
                      "on the way to greatness, no doubt about that — no? Well, if you're sure — better "
-                     f"be ~GRYFFINDOR~ <@{random_member}>! :mage:"),
+                     f"be ~GRYFFINDOR~ <@{host_id}>! :mage:"),
                     "Okay let's try that again, your whinetime host will be...:drum_with_drumsticks:",
                     "Nevermind, let's choose someone else, how about...:drum_with_drumsticks:",
                     ("Not to worry anonymous citizen, the mantle will be passed on "
@@ -506,7 +504,7 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": f"Okay <@{random_member}>, you're the boss, what's the plan?"
+                "text": f"Okay <@{host_id}>, you're the boss, what's the plan?"
             }
         },
         {
@@ -519,7 +517,7 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
                         "text": "Setup logistics",
                         "emoji": True
                     },
-                    "value": random_member,
+                    "value": host_id,
                     "action_id": "whinetime-open"
                 },
                 {
@@ -529,7 +527,6 @@ def start_whinetime_workflow(reroll=False, not_these=[GERALD_ID]):
                         "text": "Choose someone else!",
                         "emoji": True
                     },
-                    "value": ",".join(not_these),
                     "action_id": "whinetime-re-roll",
                     "style": "danger",
                     "confirm": {
