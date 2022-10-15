@@ -36,3 +36,7 @@ def get_next_host():
         hosts = randomise_hosts()
     return hosts[0]
 
+
+def weeks_until_host(host):
+    hosts = get_hosts()
+    return hosts.index(host)

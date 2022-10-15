@@ -156,7 +156,8 @@ def reply_to_mentions(say, body, direct_msg=False):
                                                   r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)",
                                                   r"(?=.*\bmy\b)(?=.*\bbirthday\b)",
                                                   r"(?=.*(\bsmart\b|\bintelligent\b|\bbrain\b))(?=.*\byour?\b)",
-                                                  r"(?=.*(\blatest\b|\brecent\b))(?=.*\bpapers?\b)"],
+                                                  r"(?=.*(\blatest\b|\brecent\b))(?=.*\bpapers?\b)",
+                                                  r"(?=.*\bwhen\b)(?=.*\bwhinetime\b)"],
                                                  [is_it_a_birthday,
                                                   start_whinetime_workflow,
                                                   any_new_publications,
@@ -165,9 +166,12 @@ def reply_to_mentions(say, body, direct_msg=False):
                                                   list_birthdays,
                                                   my_birthday,
                                                   reply_brain_size,
-                                                  reply_recent_papers],
-                                                 [True, True, True, False, False, False, False, False, False],
-                                                 [False, False, False, True, True, True, True, True, True]):
+                                                  reply_recent_papers,
+                                                  when_whinetime_host],
+                                                 [True, True, True, False, False, False, False, False, False,
+                                                  False],
+                                                 [False, False, False, True, True, True, True, True, True,
+                                                  True]):
         replied = mention_action(message=message, regex=regex, action=action,
                                  case_sensitive=case, pass_message=pass_message, direct_msg=direct_msg)
 
@@ -553,6 +557,28 @@ def start_whinetime_workflow(reroll=False):
     ])
     global latest_whinetime_message
     latest_whinetime_message = announcement
+
+
+def when_whinetime_host(message, direct_msg=False):
+    thread_ts = None if direct_msg else message["ts"]
+
+    users = app.client.users_list()["members"]
+    my_username = None
+    for user in users:
+        if user["id"] == message["user"]:
+            my_username = user["name"]
+
+    weeks_until = wt.weeks_until_host(my_username)
+
+    today = datetime.date.today()
+    next_friday = today + datetime.timedelta( (3 - today.weekday()) % 7 + 1 )
+    hosting_friday = next_friday + datetime.timedelta(weeks=weeks_until)
+
+    app.client.chat_postMessage(text=("I've got you signed up to host whinetime on "
+                                      f"{custom_strftime('%B {S}', hosting_friday)} - but that may change "
+                                      "if anyone ends up skipping hosting so be sure to check closer to the "
+                                      "time (and I'll remind you don't worry)"),
+                                channel=message["channel"], thread_ts=thread_ts)
 
 
 """ ---------- BIRTHDAYS ---------- """
