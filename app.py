@@ -154,7 +154,7 @@ def reply_to_mentions(say, body, direct_msg=False):
                                                   r"\bhappy birthday\b",
                                                   r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
                                                   r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)",
-                                                  r"(?=.*\bmy\b)(?=.*\bbirthday\b)",
+                                                  r"(?=.*\bwhen\b)(?=.*\bbirthday\b)",
                                                   r"(?=.*(\bsmart\b|\bintelligent\b|\bbrain\b))(?=.*\byour?\b)",
                                                   r"(?=.*(\blatest\b|\brecent\b))(?=.*\bpapers?\b)",
                                                   r"(?=.*\bwhen\b)(?=.*\bwhinetime\b)"],
@@ -164,7 +164,7 @@ def reply_to_mentions(say, body, direct_msg=False):
                                                   reply_happy_birthday,
                                                   reply_closest_birthday,
                                                   list_birthdays,
-                                                  my_birthday,
+                                                  when_birthday,
                                                   reply_brain_size,
                                                   reply_recent_papers,
                                                   when_whinetime_host],
@@ -830,33 +830,49 @@ def reply_happy_birthday(message, direct_msg=False):
                                     channel=message["channel"], thread_ts=thread_ts)
 
 
-def my_birthday(message, direct_msg=False):
-    users = app.client.users_list()["members"]
-    my_username = None
-    for user in users:
-        if user["id"] == message["user"]:
-            my_username = user["name"]
-
+def when_birthday(message, direct_msg=False):
     thread_ts = None if direct_msg else message["ts"]
-    with open("private_data/grad_info.csv") as birthday_file:
-        for grad in birthday_file:
-            _, username, _, birthday, _, _ = grad.split("|")
-            if username == my_username:
-                if birthday == "-":
-                    app.client.chat_postMessage(text=(f"{insert_british_consternation()} This is a little "
-                                                      "awkward but...I don't know your "
-                                                      "birthday :sweat_smile:. I did my research using the "
-                                                      "Grad Wiki and got them from <https://github.com/UW-Astro-Grads/GradWiki/wiki/Community%3APhone-List|this page>. "
-                                                      "If you could add your birthday there and then let "
-                                                      f"{GERALD_ADMIN} know I'll be sure to remember it "
-                                                      "I promise!!"),
-                                                channel=message["channel"], thread_ts=thread_ts)
-                else:
-                    day, month = map(int, birthday.split("/"))
-                    dt = datetime.date(day=day, month=month, year=2022)
-                    app.client.chat_postMessage(text=("I know your birthday! :gerald-search: "
-                                                      f"It's {custom_strftime('%B {S}', dt)}"),
-                                                channel=message["channel"], thread_ts=thread_ts)
+
+    # find any tags
+    tags = re.findall(r"<[^>]*>", message["text"])
+
+    # remove Gerald from the tags
+    if f"<@{GERALD_ID}>" in tags:
+        tags.remove(f"<@{GERALD_ID}>")
+
+    # let people say "my" paper
+    if len(tags) == 0 and message["text"].find("my") >= 0:
+        tags.append(f"<@{message['user']}>")
+
+    # if you found at least one tag
+    if len(tags) > 0:
+        tag = tags[0]
+        users = app.client.users_list()["members"]
+        birthday_username = None
+        for user in users:
+            if user["id"] == tag.replace("<@", "").replace(">", ""):
+                birthday_username = user["name"]
+
+        with open("private_data/grad_info.csv") as birthday_file:
+            for grad in birthday_file:
+                _, username, _, birthday, _, _ = grad.split("|")
+                if username == birthday_username:
+                    if birthday == "-":
+                        app.client.chat_postMessage(text=(f"{insert_british_consternation()} This is a "
+                                                          "little awkward but...I don't know this "
+                                                          "birthday :sweat_smile:. Could you please let "
+                                                          f"{GERALD_ADMIN} know I'll be sure to remember it "
+                                                          "I promise!!"),
+                                                    channel=message["channel"], thread_ts=thread_ts)
+                    else:
+                        day, month = map(int, birthday.split("/"))
+                        dt = datetime.date(day=day, month=month, year=2022)
+                        app.client.chat_postMessage(text=("I know this one! :gerald-search: "
+                                                        f"It's {custom_strftime('%B {S}', dt)}!"),
+                                                    channel=message["channel"], thread_ts=thread_ts)
+    else:
+        app.client.chat_postMessage(text="Uh...I think you asked about birthdays but you didn't say who??",
+                                    channel=message["channel"], ts=thread_ts)
 
 
 """ ---------- PUBLICATION ANNOUNCEMENTS ---------- """
