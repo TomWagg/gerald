@@ -836,13 +836,13 @@ def when_birthday(message, direct_msg=False):
     # find any tags
     tags = re.findall(r"<[^>]*>", message["text"])
 
+    # let people say "my"
+    if message["text"].find("my") >= 0:
+        tags.append(f"<@{message['user']}>")
+
     # remove Gerald from the tags if they are more than one
     if len(tags) > 1 and f"<@{GERALD_ID}>" in tags:
         tags.remove(f"<@{GERALD_ID}>")
-
-    # let people say "my" paper
-    if len(tags) == 0 and message["text"].find("my") >= 0:
-        tags.append(f"<@{message['user']}>")
 
     # if you found at least one tag
     if len(tags) > 0:
