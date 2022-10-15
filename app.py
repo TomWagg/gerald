@@ -295,6 +295,22 @@ def whinetime_submit(ack, body, client, logger):
     # switch to the next host for next time
     wt.rotate_hosts()
 
+    # let the next host that their time is coming
+    next_host = wt.get_next_host()
+    users = app.client.users_list()["members"]
+    next_host_id = None
+    for user in users:
+        if user["name"] == next_host:
+            next_host_id = user["id"]
+            break
+    dm = app.client.conversations_open(users=next_host_id)
+
+    app.client.chat_postMessage(text=("Hey up mate :gerald-wave: I've just finished getting this week's "
+                                      "whinetime host all set up and wanted to let you know that I've got "
+                                      "you penciled in to host whinetime _next_ week - so maybe start "
+                                      "thinking where you fancy going, cheers! :relaxed:"),
+                                channel=dm["channel"]["id"])
+
     global latest_whinetime_message
     if latest_whinetime_message is not None:
         app.client.chat_delete(channel=latest_whinetime_message["channel"],
