@@ -836,8 +836,8 @@ def when_birthday(message, direct_msg=False):
     # find any tags
     tags = re.findall(r"<[^>]*>", message["text"])
 
-    # remove Gerald from the tags
-    if f"<@{GERALD_ID}>" in tags:
+    # remove Gerald from the tags if they are more than one
+    if len(tags) > 1 and f"<@{GERALD_ID}>" in tags:
         tags.remove(f"<@{GERALD_ID}>")
 
     # let people say "my" paper
@@ -852,6 +852,7 @@ def when_birthday(message, direct_msg=False):
         for user in users:
             if user["id"] == tag.replace("<@", "").replace(">", ""):
                 birthday_username = user["name"]
+                break
 
         with open("private_data/grad_info.csv") as birthday_file:
             for grad in birthday_file:
