@@ -16,6 +16,8 @@ app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 GERALD_ID = "U03SY9R6D5X"
 GERALD_ADMIN = "Tom Wagg"
 
+QUOTES_CHANNEL = "bot-test"
+
 latest_whinetime_message = None
 
 
@@ -57,9 +59,11 @@ def handle_message_events(body, logger, say):
     else:
         message = body["event"]
 
+    if message["channel"] == find_channel("bot-test"):
+        save_quote(message)
+
     reaction_trigger(message, r"\btom\b", "tom")
     reaction_trigger(message, r"\bundergrad\b", "underage")
-    # reaction_trigger(message, r"\bgerald\b", ["gerald", "eyes"])
     reaction_trigger(message, r"\bbirthday\b", ["birthday", "tada"])
     reaction_trigger(message, r"\bpanic\b", ["mildpanic"])
     reaction_trigger(message, r"\bPANIC\b", ["mild-panic-intensifies"], case_sensitive=True)
@@ -76,6 +80,14 @@ def msg_action_trigger(message, triggers, callback, case_sensitive=False):
     for trigger in triggers:
         if text.find(trigger) >= 0:
             callback(message)
+
+
+def save_quote(message):
+    the_quote = re.findall(r"\"[^\"]+\"", message["text"])[0].replace("\"", "")
+    the_person = message["text"].split("-")[-1].strip()
+
+    with open("private_data/quotes.txt", "a") as f:
+        f.writelines([f"{the_quote},{the_person},1900-01-01\n"])
 
 
 """ ---------- MESSAGE REACTIONS ---------- """
@@ -291,7 +303,7 @@ def new_emoji(body, say):
 def whinetime_submit(ack, body, client, logger):
     # acknowledge the submission
     ack()
-    
+
     # switch to the next host for next time
     wt.rotate_hosts()
 
@@ -587,7 +599,7 @@ def when_whinetime_host(message, direct_msg=False):
     weeks_until = wt.weeks_until_host(my_username)
 
     today = datetime.date.today()
-    next_friday = today + datetime.timedelta( (3 - today.weekday()) % 7 + 1 )
+    next_friday = today + datetime.timedelta((3 - today.weekday()) % 7 + 1)
     hosting_friday = next_friday + datetime.timedelta(weeks=weeks_until)
 
     app.client.chat_postMessage(text=("I've got you signed up to host whinetime on "
@@ -869,7 +881,7 @@ def when_birthday(message, direct_msg=False):
                         day, month = map(int, birthday.split("/"))
                         dt = datetime.date(day=day, month=month, year=2022)
                         app.client.chat_postMessage(text=("I know this one! :gerald-search: "
-                                                        f"It's {custom_strftime('%B {S}', dt)}!"),
+                                                          f"It's {custom_strftime('%B {S}', dt)}!"),
                                                     channel=message["channel"], thread_ts=thread_ts)
     else:
         app.client.chat_postMessage(text="Uh...I think you asked about birthdays but you didn't say who??",
@@ -1264,7 +1276,7 @@ def announce_publication(username, name, papers):
 
 def bonk_someone(message):
     # find the user to bonk
-    bonkers = re.search("\<(.*?)\>", message["text"])
+    bonkers = re.search(r"\<(.*?)\>", message["text"])
 
     # if there is one then BONK them
     if bonkers is not None:
