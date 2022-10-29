@@ -10,6 +10,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 from ads_query import bold_grad_author, get_ads_papers
 import whinetime as wt
+import quotes
 
 # Initializes your app with your bot token and socket mode handler
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
@@ -60,7 +61,7 @@ def handle_message_events(body, logger, say):
         message = body["event"]
 
     if message["channel"] == find_channel("bot-test"):
-        save_quote(message)
+        quotes.save_quote(message["text"])
 
     reaction_trigger(message, r"\btom\b", "tom")
     reaction_trigger(message, r"\bundergrad\b", "underage")
@@ -82,12 +83,12 @@ def msg_action_trigger(message, triggers, callback, case_sensitive=False):
             callback(message)
 
 
-def save_quote(message):
-    the_quote = re.findall(r"\"[^\"]+\"", message["text"])[0].replace("\"", "")
-    the_person = message["text"].split("-")[-1].strip()
 
-    with open("private_data/quotes.txt", "a") as f:
-        f.writelines([f"{the_quote},{the_person},1900-01-01\n"])
+
+def announce_quotes():
+    channel = find_channel("bot-test")
+
+
 
 
 """ ---------- MESSAGE REACTIONS ---------- """
