@@ -60,7 +60,8 @@ def handle_message_events(body, logger, say):
     else:
         message = body["event"]
 
-    if message["channel"] == find_channel("bot-test"):
+    # detect whether anyone has written a quote
+    if message["channel"] == find_channel("quotes"):
         quotes.save_quote(message["text"])
 
     reaction_trigger(message, r"\btom\b", "tom")
@@ -83,12 +84,53 @@ def msg_action_trigger(message, triggers, callback, case_sensitive=False):
             callback(message)
 
 
+def announce_quote():
+    channel = find_channel("random")
+    quote, person = quotes.pick_random_quote()
+    if quote is not None and person is not None:
+        prefixes = [
+            "Let's all take a second to remember this special moment...",
+            "It's Tuesday morning and we all know what that means, QUOTE TIME :meowparty:",
+            f"I still can't believe {person} said this",
+            "If there's one thing we can learn from this, it is to keep note of when you are on the record",
+            "It's QUOTE TIME, how I love to reminisce on the foolishness of the astro grad :gerald-wink:",
+            "Tuesday morning means quotes! Here's a favourite of mine from the old databanks"
+        ]
 
+        blocks = [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": "Quote of the week",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": np.random.choice(prefixes),
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"> {quote} - {person}"
+                }
+            }
+        ]
 
-def announce_quotes():
-    channel = find_channel("bot-test")
-
-
+        app.client.chat_postMessage(channel=channel, text=f"Here's a quote \"{quote}\" - {person} ",
+                                    blocks=blocks)
+    else:
+        app.client.chat_postMessage(channel=channel,
+                                    text=("Uh oh, looks like ye olde quote stock is running thin so no quote "
+                                          "this week :cry: Quick! Drop everything you're doing, say some "
+                                          "stupid things, then "
+                                          f"write them in <#{find_channel('quotes')}|whinetime>! "
+                                          ":upside_down_face:"))
 
 
 """ ---------- MESSAGE REACTIONS ---------- """
@@ -164,6 +206,7 @@ def reply_to_mentions(say, body, direct_msg=False):
     for regex, action, case, pass_message in zip([r"\bBIRTHDAY MANUAL\b",
                                                   r"\bWHINETIME MANUAL\b",
                                                   r"\bPAPER MANUAL\b",
+                                                  r"\bQUOTE MANUAL\b",
                                                   r"\bhappy birthday\b",
                                                   r"(?=.*\bnext\b)(?=.*\bbirthday\b)",
                                                   r"(?=.*(\ball\b|\beveryone\b))(?=.*\bbirthdays?\b)",
@@ -174,6 +217,7 @@ def reply_to_mentions(say, body, direct_msg=False):
                                                  [is_it_a_birthday,
                                                   start_whinetime_workflow,
                                                   any_new_publications,
+                                                  announce_quote,
                                                   reply_happy_birthday,
                                                   reply_closest_birthday,
                                                   list_birthdays,
@@ -181,10 +225,10 @@ def reply_to_mentions(say, body, direct_msg=False):
                                                   reply_brain_size,
                                                   reply_recent_papers,
                                                   when_whinetime_host],
-                                                 [True, True, True, False, False, False, False, False, False,
-                                                  False],
-                                                 [False, False, False, True, True, True, True, True, True,
-                                                  True]):
+                                                 [True, True, True, True,
+                                                  False, False, False, False, False, False, False],
+                                                 [False, False, False, False,
+                                                  True, True, True, True, True, True, True]):
         replied = mention_action(message=message, regex=regex, action=action,
                                  case_sensitive=case, pass_message=pass_message, direct_msg=direct_msg)
 
@@ -1395,6 +1439,9 @@ def every_morning():
     # if the day is Monday then send out the whinetime reminders
     if the_day == "Monday":
         start_whinetime_workflow()
+
+    if the_day == "Tuesday":
+        announce_quote()
 
     is_it_a_birthday()
 

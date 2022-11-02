@@ -1,14 +1,14 @@
-import re
 import datetime
 import numpy as np
 
 
 def save_quote(text):
     """Save a quote to file given a message"""
-    quotes = re.findall(r"\"[^\"]+\"", text)
-    if len(quotes) != 0:
-        the_quote = quotes[0].replace("\"", "")
-        the_person = text.split("-")[-1].strip()
+    if text[:4] == "&gt;":
+        print("found one")
+        text = text.replace("&gt;", "").replace("\"", "").replace("“", "").replace("”", "")
+        the_quote, the_person = text.split("-")
+        the_quote, the_person = the_quote.strip(), the_person.strip()
 
         with open("private_data/quotes.txt", "r") as f:
             for line in f:
@@ -23,7 +23,6 @@ def pick_random_quote():
     with open("private_data/quotes.txt", "r") as f:
         lines = f.readlines()
 
-    print(lines)
     ids, quotes, people = [], [], []
     today = datetime.date.today()
     for line in lines:
@@ -40,7 +39,7 @@ def pick_random_quote():
                 people.append(person)
 
     if len(ids) == 0:
-        return None
+        return None, None
 
     i = np.random.randint(len(ids))
     lines[int(ids[i])] = f"{ids[i]}|{quotes[i]}|{people[i]}|{today.year}-{today.month}-{today.day}\n"
@@ -49,5 +48,3 @@ def pick_random_quote():
         lines = f.writelines(lines)
 
     return quotes[i], people[i]
-
-print(pick_random_quote())
