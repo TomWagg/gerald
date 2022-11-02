@@ -878,12 +878,17 @@ def when_birthday(message, direct_msg=False):
                                                           f"{GERALD_ADMIN} know I'll be sure to remember it "
                                                           "I promise!!"),
                                                     channel=message["channel"], thread_ts=thread_ts)
+                        return
                     else:
                         day, month = map(int, birthday.split("/"))
                         dt = datetime.date(day=day, month=month, year=2022)
                         app.client.chat_postMessage(text=("I know this one! :gerald-search: "
                                                           f"It's {custom_strftime('%B {S}', dt)}!"),
                                                     channel=message["channel"], thread_ts=thread_ts)
+                        return
+            app.client.chat_postMessage(text=("Unfortunately I don't have that person in my database! Maybe "
+                                              "they graduated??"),
+                                        channel=message["channel"], thread_ts=thread_ts)
     else:
         app.client.chat_postMessage(text="Uh...I think you asked about birthdays but you didn't say who??",
                                     channel=message["channel"], ts=thread_ts)
