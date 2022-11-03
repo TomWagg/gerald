@@ -71,6 +71,7 @@ def handle_message_events(body, logger, say):
     reaction_trigger(message, r"\bPANIC\b", ["mild-panic-intensifies"], case_sensitive=True)
     reaction_trigger(message, r"\bvampires?\b", ["vampire"])
     reaction_trigger(message, r"(\bgoodnight\b|\bnap\b)", "sleeping")
+    reaction_trigger(message, r"\bhm+\b", "hmmmmm")
 
     msg_action_trigger(message, "bonk", bonk_someone)
 

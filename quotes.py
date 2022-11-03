@@ -5,7 +5,6 @@ import numpy as np
 def save_quote(text):
     """Save a quote to file given a message"""
     if text[:4] == "&gt;":
-        print("found one")
         text = text.replace("&gt;", "").replace("\"", "").replace("“", "").replace("”", "")
         the_quote, the_person = text.split("-")
         the_quote, the_person = the_quote.strip(), the_person.strip()
