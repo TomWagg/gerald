@@ -10,17 +10,22 @@ def save_quote(text):
         the_quote, the_person = the_quote.strip(), the_person.strip()
 
         with open("private_data/quotes.txt", "r") as f:
-            for line in f:
-                if line.rstrip() != "":
-                    latest_id, _, _, _ = line.rstrip().split("|")
+
+            file = f.read()
+            lines = file.split("}")
+
+        for line in lines:
+            if line.rstrip() != "":
+                latest_id, _, _, _ = line.lstrip().rstrip().split("|")
 
         with open("private_data/quotes.txt", "a") as f:
-            f.writelines([f"\n{int(latest_id) + 1}|{the_quote}|{the_person}|1900-01-01"])
+            f.writelines([f"\n{int(latest_id) + 1}|{the_quote}|{the_person}|1900-01-01" + "}"])
 
 
 def pick_random_quote():
     with open("private_data/quotes.txt", "r") as f:
-        lines = f.readlines()
+        file = f.read()
+        lines = file.split("}")
 
     ids, quotes, people = [], [], []
     today = datetime.date.today()
@@ -41,9 +46,18 @@ def pick_random_quote():
         return None, None
 
     i = np.random.randint(len(ids))
-    lines[int(ids[i])] = f"{ids[i]}|{quotes[i]}|{people[i]}|{today.year}-{today.month}-{today.day}\n"
+    lines[int(ids[i])] = f"{ids[i]}|{quotes[i]}|{people[i]}|{today.year}-{today.month}-{today.day}" + "\n"
+    for i in range(len(lines)):
+        lines[i].replace("\n", "}\n")
 
     with open("private_data/quotes.txt", "w") as f:
-        lines = f.writelines(lines)
+        f.writelines(lines)
 
     return quotes[i], people[i]
+
+# with open("private_data/quotes.txt", "r") as f:
+#     lines = f.readlines()
+# for i in range(len(lines)):
+#     lines[i] = lines[i].replace("\n", "}\n")
+# with open("private_data/quotes.txt", "w") as f:
+#     f.writelines(lines)
