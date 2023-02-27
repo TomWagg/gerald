@@ -17,7 +17,7 @@ app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 GERALD_ID = "U03SY9R6D5X"
 GERALD_ADMIN = "Tom Wagg"
 
-QUOTES_CHANNEL = "bot-test"
+QUOTES_CHANNEL = "quotes"
 
 latest_whinetime_message = None
 
@@ -61,7 +61,7 @@ def handle_message_events(body, logger, say):
         message = body["event"]
 
     # detect whether anyone has written a quote
-    if message["channel"] == find_channel("quotes"):
+    if message["channel"] == find_channel(QUOTES_CHANNEL):
         quotes.save_quote(message["text"])
 
     reaction_trigger(message, r"\btom\b", "tom")
@@ -130,7 +130,7 @@ def announce_quote():
                                     text=("Uh oh, looks like ye olde quote stock is running thin so no quote "
                                           "this week :cry: Quick! Drop everything you're doing, say some "
                                           "stupid things, then "
-                                          f"write them in <#{find_channel('quotes')}|whinetime>! "
+                                          f"write them in <#{find_channel(QUOTES_CHANNEL)}|whinetime>! "
                                           ":upside_down_face:"))
 
 

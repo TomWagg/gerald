@@ -3,3 +3,5 @@ private_data/*
 !private_data/README.md
 __pycache__/
 .vscode/
+log.err
+log.out

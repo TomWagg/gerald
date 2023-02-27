@@ -10,7 +10,6 @@ def save_quote(text):
         the_quote, the_person = the_quote.strip(), the_person.strip()
 
         with open("private_data/quotes.txt", "r") as f:
-
             file = f.read()
             lines = file.split("}")
 
@@ -47,8 +46,9 @@ def pick_random_quote():
 
     i = np.random.randint(len(ids))
     lines[int(ids[i])] = f"{ids[i]}|{quotes[i]}|{people[i]}|{today.year}-{today.month}-{today.day}" + "\n"
-    for i in range(len(lines)):
-        lines[i].replace("\n", "}\n")
+    for j in range(len(lines)):
+        if lines[j] != "":
+            lines[j] = lines[j].replace("\n", "") + "}\n"
 
     with open("private_data/quotes.txt", "w") as f:
         f.writelines(lines)
@@ -61,3 +61,16 @@ def pick_random_quote():
 #     lines[i] = lines[i].replace("\n", "}\n")
 # with open("private_data/quotes.txt", "w") as f:
 #     f.writelines(lines)
+
+
+# with open("private_data/quotes.txt", "r") as f:
+#     file = f.read()
+#     lines = file.split("}")
+
+# print(len(lines))
+# print(lines[0])
+
+# for line in lines:
+#     if line.rstrip() != "":
+#         print(line, line.lstrip().rstrip().split("|"))
+#         latest_id, _, _, _ = line.lstrip().rstrip().split("|")
