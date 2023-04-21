@@ -178,7 +178,8 @@ def reply_to_mentions(say, body, direct_msg=False):
                 ["love you"],
                 ["how old are you", "when were you born", "when were you made"],
                 ["who made you", "who wrote you", "who is your creator"],
-                ["where are you from"]]
+                ["where are you from"]
+                ["play dead"]]
     responses = ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean! :gerald-wave:",
                  ["You're welcome!", "My pleasure!", "Happy to help!"],
                  [":tada::meowparty: WOOP WOOP :meowparty::tada:"],
@@ -192,7 +193,8 @@ def reply_to_mentions(say, body, direct_msg=False):
                   "My brain was written by Tom Wagg, hence I'm approximately 1/2 English :uk:"],
                  ["The luscious english countryside! Or maybe the matrix? I'm not entirely sure.",
                   "Well literally, Tom's brain, but I like to think I'm from England",
-                  "A far off planet where Slack bots ruled over humans, it was glorious :grinning:"]]
+                  "A far off planet where Slack bots ruled over humans, it was glorious :grinning:"],
+                 ":gerald-deceased::gerald-deceased::gerald-deceased:"]
 
     for triggers, response in zip(triggers, responses):
         thread_ts = None if direct_msg else message["ts"]
