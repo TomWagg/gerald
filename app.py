@@ -178,7 +178,7 @@ def reply_to_mentions(say, body, direct_msg=False):
                 ["love you"],
                 ["how old are you", "when were you born", "when were you made"],
                 ["who made you", "who wrote you", "who is your creator"],
-                ["where are you from"]
+                ["where are you from"],
                 ["play dead"]]
     responses = ["Don't worry, I'm okay. In fact, I'm feeling positively tremendous old bean! :gerald-wave:",
                  ["You're welcome!", "My pleasure!", "Happy to help!"],
