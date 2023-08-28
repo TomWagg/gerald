@@ -1447,7 +1447,7 @@ def every_morning():
     the_day = today.strftime("%A")
 
     # if the day is Monday then send out the whinetime reminders
-    if the_day == "Monday":
+    if the_day == "Monday" and today.month not in [7, 8]:
         start_whinetime_workflow()
 
     if the_day == "Tuesday":
