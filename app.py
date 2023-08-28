@@ -18,6 +18,7 @@ GERALD_ID = "U03SY9R6D5X"
 GERALD_ADMIN = "Tom Wagg"
 
 QUOTES_CHANNEL = "quotes"
+PAPERS_CHANNEL = "random"
 
 latest_whinetime_message = None
 
@@ -1163,6 +1164,9 @@ def any_new_publications():
 
     initial_announcement = False
 
+    # find the user ID of the person
+    users = app.client.users_list()["members"]
+
     # go through the file of grads
     with open("private_data/grad_info.csv") as grad_file:
         for grad in grad_file:
@@ -1196,36 +1200,36 @@ def any_new_publications():
                     # send an announcement and remember to not do that next time
                     app.client.chat_postMessage(text=("It's time for our weekly paper round up, let's see "
                                                       "what everyone's been publishing in this last week!"),
-                                                channel=find_channel("random"))
+                                                channel=find_channel(PAPERS_CHANNEL))
                     initial_announcement = True
-                announce_publication(username, name, weekly_papers)
+
+                user_id = None
+                for user in users:
+                    if user["name"] == username:
+                        user_id = user["id"]
+                        break
+
+                if user_id is None:
+                    print(f"CAN'T FIND USER ID FOR {username}")
+                    continue
+                announce_publication(user_id, name, weekly_papers)
 
     if no_new_papers:
         print("No new papers!")
 
 
-def announce_publication(username, name, papers):
+def announce_publication(user_id, name, papers):
     """Announce to the workspace that someone has published a new paper(s)
 
     Parameters
     ----------
-    username : `str`
-        Slack username of the person
+    user_id : `str`
+        Slack user ID of the person
     name : `str`
         Plain name of the person
     papers : `list` of `dicts`
         List of dictionaries of the papers (I imagine usually just one but just in case)
     """
-    # find the user ID of the person
-    users = app.client.users_list()["members"]
-    user_id = None
-    for user in users:
-        if user["name"] == username:
-            user_id = user["id"]
-            break
-
-    if user_id is None:
-        return
 
     # choose an random adjective
     adjective = np.random.choice(["Splendid", "Tremendous", "Brilliant",
@@ -1315,7 +1319,7 @@ def announce_publication(username, name, papers):
     abstract_blocks = list(np.ravel(abstract_blocks))
 
     # find the channel and send the initial message
-    channel = find_channel("random")
+    channel = find_channel(PAPERS_CHANNEL)
     message = app.client.chat_postMessage(text="Congrats on your new paper(s)!",
                                           blocks=blocks, channel=channel, unfurl_links=False)
 
@@ -1422,6 +1426,9 @@ def find_channel(channel_name):
     if ch_id is None:
         print(f"WARNING: couldn't find channel '{channel_name}'")
     return ch_id
+
+
+def refresh_user_list
 
 
 def suffix(d):
