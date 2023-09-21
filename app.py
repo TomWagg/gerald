@@ -18,7 +18,7 @@ GERALD_ID = "U03SY9R6D5X"
 GERALD_ADMIN = "Tom Wagg"
 
 QUOTES_CHANNEL = "quotes"
-PAPERS_CHANNEL = "random"
+PAPERS_CHANNEL = "arxiv"
 
 latest_whinetime_message = None
 
@@ -1412,8 +1412,9 @@ def find_channel(channel_name):
         ID of the Slack channel
     """
     # grab the list of channels
-    channels = app.client.conversations_list(exclude_archived=True)
+    channels = app.client.conversations_list(exclude_archived=True, limit=500)
     ch_id = None
+
 
     # go through each and find one with the same name
     for channel in channels["channels"]:
@@ -1426,9 +1427,6 @@ def find_channel(channel_name):
     if ch_id is None:
         print(f"WARNING: couldn't find channel '{channel_name}'")
     return ch_id
-
-
-def refresh_user_list
 
 
 def suffix(d):
@@ -1465,3 +1463,4 @@ if __name__ == "__main__":
     scheduler.add_job(every_morning, "cron", hour=9, minute=32)
     scheduler.start()
     SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
+
