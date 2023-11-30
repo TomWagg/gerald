@@ -21,7 +21,7 @@ def convert_quotes_file_to_df():
     df = pd.DataFrame({"quote": quotes, "person": people, "date": dates})
     df["date"] = pd.to_datetime(df["date"])
     df = df.reset_index()
-    df.to_csv("private_data/quotes.csv")
+    df.to_csv("private_data/quotes.csv", sep="|")
     return df
 
 
