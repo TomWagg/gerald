@@ -1,5 +1,28 @@
 import datetime
 import numpy as np
+import pandas as pd
+
+
+def convert_quotes_file_to_df():
+    """Convert the quotes file to a pandas dataframe"""
+    with open("private_data/quotes.txt", "r") as f:
+        file = f.read()
+        lines = file.split("}")
+
+    ids, quotes, people, dates = [], [], [], []
+    for line in lines:
+        if line.rstrip() != "":
+            id, quote, person, date = line.lstrip().rstrip().split("|")
+            ids.append(id)
+            quotes.append(quote)
+            people.append(person)
+            dates.append(date)
+
+    df = pd.DataFrame({"quote": quotes, "person": people, "date": dates})
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.reset_index()
+    df.to_csv("private_data/quotes.csv")
+    return df
 
 
 def save_quote(text):
@@ -44,10 +67,13 @@ def pick_random_quote():
     if len(ids) == 0:
         return None, None
 
-    i = np.random.randint(len(ids))
-    lines[int(ids[i])] = f"{ids[i]}|{quotes[i]}|{people[i]}|{today.year}-{today.month}-{today.day}" + "\n"
+    random_id = np.random.choice(ids)
+    i = ids.index(random_id)
     for j in range(len(lines)):
         if lines[j] != "":
+            id, quote, person, date = lines[j].split("|")
+            if id == ids[i]:
+                lines[j] = f"{ids[i]}|{quotes[i]}|{people[i]}|{today.year}-{today.month}-{today.day}" + "\n"
             lines[j] = lines[j].replace("\n", "") + "}\n"
 
     with open("private_data/quotes.txt", "w") as f:
