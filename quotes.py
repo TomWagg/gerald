@@ -49,7 +49,7 @@ def pick_random_quote():
 
     # find which quotes have not been used in the last 100 days
     today = datetime.date.today()
-    unrecent_quotes = quotes["date"] < (pd.Timestamp(today) - pd.Timedelta(days=100))
+    unrecent_quotes = pd.to_datetime(quotes["date"]) < (pd.Timestamp(today) - pd.Timedelta(days=100))
 
     # if all quotes have been used in the last 100 days, return None
     if unrecent_quotes.sum() == 0:
