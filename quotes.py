@@ -2,28 +2,6 @@ import datetime
 import pandas as pd
 
 
-def convert_quotes_file_to_df():
-    """Convert the quotes file to a pandas dataframe"""
-    with open("private_data/quotes.txt", "r") as f:
-        file = f.read()
-        lines = file.split("}")
-
-    ids, quotes, people, dates = [], [], [], []
-    for line in lines:
-        if line.rstrip() != "":
-            id, quote, person, date = line.lstrip().rstrip().split("|")
-            ids.append(id)
-            quotes.append(quote)
-            people.append(person)
-            dates.append(date)
-
-    df = pd.DataFrame({"quote": quotes, "person": people, "date": dates})
-    df["date"] = pd.to_datetime(df["date"])
-    df = df.reset_index()
-    df.to_csv("private_data/quotes.csv", sep="|", index=False)
-    return df
-
-
 def save_quote(text):
     """Save a quote to file given a message"""
     # check if the message is a quote
