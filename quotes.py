@@ -1,5 +1,4 @@
 import datetime
-import numpy as np
 import pandas as pd
 
 
@@ -21,82 +20,47 @@ def convert_quotes_file_to_df():
     df = pd.DataFrame({"quote": quotes, "person": people, "date": dates})
     df["date"] = pd.to_datetime(df["date"])
     df = df.reset_index()
-    df.to_csv("private_data/quotes.csv", sep="|")
+    df.to_csv("private_data/quotes.csv", sep="|", index=False)
     return df
 
 
 def save_quote(text):
     """Save a quote to file given a message"""
+    # check if the message is a quote
     if text[:4] == "&gt;":
+        # remove the quote symbols and quotation marks
         text = text.replace("&gt;", "").replace("\"", "").replace("“", "").replace("”", "")
+
+        # split the quote and person
         the_quote, the_person = text.split("-")
         the_quote, the_person = the_quote.strip(), the_person.strip()
 
-        with open("private_data/quotes.txt", "r") as f:
-            file = f.read()
-            lines = file.split("}")
-
-        for line in lines:
-            if line.rstrip() != "":
-                latest_id, _, _, _ = line.lstrip().rstrip().split("|")
-
-        with open("private_data/quotes.txt", "a") as f:
-            f.writelines([f"\n{int(latest_id) + 1}|{the_quote}|{the_person}|1900-01-01" + "}"])
+        # append the quote to the quotes file
+        quotes = pd.read_csv("private_data/quotes.csv", sep="|")
+        quotes.append({'quote': the_quote,
+                       'person': the_person,
+                       'date': pd.Timestamp("1900-01-01")},
+                      ignore_index=True).reset_index().to_csv("private_data/quotes.csv",
+                                                              sep="|", index=False)
 
 
 def pick_random_quote():
-    with open("private_data/quotes.txt", "r") as f:
-        file = f.read()
-        lines = file.split("}")
+    quotes = pd.read_csv("private_data/quotes.csv", sep="|")
 
-    ids, quotes, people = [], [], []
+    # find which quotes have not been used in the last 100 days
     today = datetime.date.today()
-    for line in lines:
-        if line.rstrip() != "":
-            id, quote, person, date = line.split("|")
-            year, month, day = date.split("-")
+    unrecent_quotes = quotes["date"] < (pd.Timestamp(today) - pd.Timedelta(days=100))
 
-            dt = datetime.date(year=int(year), month=int(month), day=int(day))
-            days_since = (today - dt).days
-
-            if days_since > 100:
-                ids.append(id)
-                quotes.append(quote)
-                people.append(person)
-
-    if len(ids) == 0:
+    # if all quotes have been used in the last 100 days, return None
+    if unrecent_quotes.sum() == 0:
         return None, None
 
-    random_id = np.random.choice(ids)
-    i = ids.index(random_id)
-    for j in range(len(lines)):
-        if lines[j] != "":
-            id, quote, person, date = lines[j].split("|")
-            if id == ids[i]:
-                lines[j] = f"{ids[i]}|{quotes[i]}|{people[i]}|{today.year}-{today.month}-{today.day}" + "\n"
-            lines[j] = lines[j].replace("\n", "") + "}\n"
+    # pick a random quote from the unrecent quotes
+    random_quote = quotes[unrecent_quotes].sample(1)
 
-    with open("private_data/quotes.txt", "w") as f:
-        f.writelines(lines)
+    # update the quote date to today
+    quotes.loc[random_quote.index, "date"] = pd.Timestamp(today)
+    quotes.to_csv("private_data/quotes.csv", sep="|")
 
-    return quotes[i], people[i]
-
-# with open("private_data/quotes.txt", "r") as f:
-#     lines = f.readlines()
-# for i in range(len(lines)):
-#     lines[i] = lines[i].replace("\n", "}\n")
-# with open("private_data/quotes.txt", "w") as f:
-#     f.writelines(lines)
-
-
-# with open("private_data/quotes.txt", "r") as f:
-#     file = f.read()
-#     lines = file.split("}")
-
-# print(len(lines))
-# print(lines[0])
-
-# for line in lines:
-#     if line.rstrip() != "":
-#         print(line, line.lstrip().rstrip().split("|"))
-#         latest_id, _, _, _ = line.lstrip().rstrip().split("|")
+    # return the quote and person
+    return random_quote["quote"], random_quote["person"]
