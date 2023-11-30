@@ -63,4 +63,4 @@ def pick_random_quote():
     quotes.to_csv("private_data/quotes.csv", sep="|")
 
     # return the quote and person
-    return random_quote["quote"], random_quote["person"]
+    return random_quote["quote"].values[0], random_quote["person"].values[0]
