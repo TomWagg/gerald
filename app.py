@@ -81,7 +81,9 @@ def handle_message_events(body, logger, say):
                                           'live_pebbles_reaction', 'biblically-accurate-pebbles',
                                           'life-comes-at-u-fast-pebbles'])
     reaction_trigger(message, r"((yay)|(woohoo))", ['yay', 'winniedance', 'dancingpikachu', 'party-blob'])
-    re
+    reaction_trigger(message, r"\bmario\b", ['spurned-grad-student', 'gerald-angry'])
+    reaction_trigger(message, r"3d", '3d-tom')
+    reaction_trigger(message, r"pirate", 'pirate-tom')
 
     msg_action_trigger(message, "bonk", bonk_someone)
 
