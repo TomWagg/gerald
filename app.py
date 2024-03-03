@@ -65,7 +65,7 @@ def handle_message_events(body, logger, say):
     if message["channel"] == find_channel(QUOTES_CHANNEL):
         quotes.save_quote(message["text"])
 
-    reaction_trigger(message, r"\btom\b", "tom")
+    reaction_trigger(message, r"\btom\b*\bquinn\b", "tom")
     reaction_trigger(message, r"\bundergrad\b", "underage")
     reaction_trigger(message, r"\bbirthday\b", ["birthday", "tada"])
     reaction_trigger(message, r"\bpanic\b", ["mildpanic"])
@@ -73,6 +73,14 @@ def handle_message_events(body, logger, say):
     reaction_trigger(message, r"\bvampires?\b", ["vampire"])
     reaction_trigger(message, r"(\bgoodnight\b|\bnap\b)", "sleeping")
     reaction_trigger(message, r"\bhm+\b", "hmmmmm")
+    reaction_trigger(message, r"scheme", "scheme")
+    reaction_trigger(message, r"\bbonk\b", "bonk")
+    reaction_trigger(message, r"\bbeard\b", ["beard", "strokes-beard"])
+    reaction_trigger(message, r"\bburn\b", "elmo_fire")
+    reaction_trigger(message, r"pebble", ['monday-pebbles', 'babushka-pebbles', 'irritated-pebbles',
+                                          'live_pebbles_reaction', 'biblically-accurate-pebbles',
+                                          'life-comes-at-u-fast-pebbles'])
+    reaction_trigger(message, r"(yay|woohoo)", ['yay', 'winnie-dance', 'dancingpikachu', 'party-blob'])
 
     msg_action_trigger(message, "bonk", bonk_someone)
 
@@ -1414,7 +1422,6 @@ def find_channel(channel_name):
     # grab the list of channels
     channels = app.client.conversations_list(exclude_archived=True, limit=500)
     ch_id = None
-
 
     # go through each and find one with the same name
     for channel in channels["channels"]:
