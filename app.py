@@ -65,7 +65,7 @@ def handle_message_events(body, logger, say):
     if message["channel"] == find_channel(QUOTES_CHANNEL):
         quotes.save_quote(message["text"])
 
-    reaction_trigger(message, r"\btom\b*\bquinn\b", "tom")
+    reaction_trigger(message, r"\btom\b.*\bquinn\b", "tom")
     reaction_trigger(message, r"\bundergrad\b", "underage")
     reaction_trigger(message, r"\bbirthday\b", ["birthday", "tada"])
     reaction_trigger(message, r"\bpanic\b", ["mildpanic"])
@@ -80,7 +80,7 @@ def handle_message_events(body, logger, say):
     reaction_trigger(message, r"pebble", ['monday-pebbles', 'babushka-pebbles', 'irritated-pebbles',
                                           'live_pebbles_reaction', 'biblically-accurate-pebbles',
                                           'life-comes-at-u-fast-pebbles'])
-    reaction_trigger(message, r"(yay|woohoo)", ['yay', 'winnie-dance', 'dancingpikachu', 'party-blob'])
+    reaction_trigger(message, r"((yay)|(woohoo))", ['yay', 'winnie-dance', 'dancingpikachu', 'party-blob'])
 
     msg_action_trigger(message, "bonk", bonk_someone)
 
