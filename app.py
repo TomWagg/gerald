@@ -73,14 +73,15 @@ def handle_message_events(body, logger, say):
     reaction_trigger(message, r"\bvampires?\b", ["vampire"])
     reaction_trigger(message, r"(\bgoodnight\b|\bnap\b)", "sleeping")
     reaction_trigger(message, r"\bhm+\b", "hmmmmm")
-    reaction_trigger(message, r"scheme", "scheme")
+    reaction_trigger(message, r"schem", "scheme")
     reaction_trigger(message, r"\bbonk\b", "bonk")
     reaction_trigger(message, r"\bbeard\b", ["beard", "strokes-beard"])
     reaction_trigger(message, r"\bburn\b", "elmo_fire")
     reaction_trigger(message, r"pebble", ['monday-pebbles', 'babushka-pebbles', 'irritated-pebbles',
                                           'live_pebbles_reaction', 'biblically-accurate-pebbles',
                                           'life-comes-at-u-fast-pebbles'])
-    reaction_trigger(message, r"((yay)|(woohoo))", ['yay', 'winnie-dance', 'dancingpikachu', 'party-blob'])
+    reaction_trigger(message, r"((yay)|(woohoo))", ['yay', 'winniedance', 'dancingpikachu', 'party-blob'])
+    re
 
     msg_action_trigger(message, "bonk", bonk_someone)
 
