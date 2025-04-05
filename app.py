@@ -183,7 +183,7 @@ def reply_to_mentions(say, body, direct_msg=False):
     message = body["event"]
     # reply to mentions with specific messages
 
-    age = (datetime.date.today() - datetime.date(year=2022, month=8, day=5)).days
+    age = (datetime.date.today() - datetime.date(year=2025, month=8, day=5)).days
     triggers = [["status", "okay", "ok", "how are you"],
                 ["thank", "you're the best", "nice job", "nice work", "good work", "good job", "well done"],
                 ["celebrate"],
@@ -768,7 +768,7 @@ def list_birthdays(message, direct_msg=False):
 def is_it_a_birthday():
     """ Check if today is someone's birthday! """
     # find the closest birthday
-    birthday_people, _, closest_time = closest_birthday()
+    birthday_people, _, closest_time, _, _ = closest_birthday()
 
     # if you found someone and their birthday is today
     if birthday_people != [] and closest_time == 0:
@@ -849,7 +849,7 @@ def closest_birthday():
             elif days_until == closest_time:
                 usernames.append(username)
                 names.append(name)
-    return usernames, names, closest_time
+    return usernames, names, closest_time, day, month
 
 
 def reply_closest_birthday(message, direct_msg=False):
@@ -863,10 +863,12 @@ def reply_closest_birthday(message, direct_msg=False):
         Whether the message was a direct message (and thus whether to use a thread), by default False
     """
     # get the closest birthday
-    _, names, closest_time = closest_birthday()
+    _, names, closest_time, day, month = closest_birthday()
 
+    # also say when that birthday is
+    dt = datetime.date(day=day, month=month, year=2025)
     # write a string for how close it is (and be dramatic if it is today)
-    time_until_str = f"it's in {closest_time} days!" if closest_time != 0 else "it's today :scream:!!"
+    time_until_str = f"it's in {closest_time} days on {custom_strftime('%B {S}', dt)}!" if closest_time != 0 else "it's today :scream:!!"
 
     # if it is just one birthday
     thread_ts = None if direct_msg else message["ts"]
@@ -940,7 +942,7 @@ def when_birthday(message, direct_msg=False):
                         return
                     else:
                         day, month = map(int, birthday.split("/"))
-                        dt = datetime.date(day=day, month=month, year=2022)
+                        dt = datetime.date(day=day, month=month, year=2025)
                         app.client.chat_postMessage(text=("I know this one! :gerald-search: "
                                                           f"It's {custom_strftime('%B {S}', dt)}!"),
                                                     channel=message["channel"], thread_ts=thread_ts)
