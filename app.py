@@ -1463,10 +1463,6 @@ def every_morning():
 
     is_it_a_birthday()
 
-    if the_day == "Wednesday":
-        any_new_publications()
-
-
 # start Gerald
 if __name__ == "__main__":
     scheduler = BackgroundScheduler({'apscheduler.timezone': 'US/Pacific'})
