@@ -22,7 +22,6 @@ PAPERS_CHANNEL = "arxiv"
 
 latest_whinetime_message = None
 
-
 """ ---------- MESSAGE DETECTIONS ---------- """
 
 
@@ -845,11 +844,12 @@ def closest_birthday():
                 usernames = [username]
                 names = [name]
                 closest_time = days_until
+                day_out, month_out = day, month
             # if it is equal then we have two people sharing a birthday!
             elif days_until == closest_time:
                 usernames.append(username)
                 names.append(name)
-    return usernames, names, closest_time, day, month
+    return usernames, names, closest_time, day_out, month_out
 
 
 def reply_closest_birthday(message, direct_msg=False):
