@@ -182,7 +182,7 @@ def reply_to_mentions(say, body, direct_msg=False):
     message = body["event"]
     # reply to mentions with specific messages
 
-    age = (datetime.date.today() - datetime.date(year=2025, month=8, day=5)).days
+    age = (datetime.date.today() - datetime.date(year=2022, month=8, day=5)).days
     triggers = [["status", "okay", "ok", "how are you"],
                 ["thank", "you're the best", "nice job", "nice work", "good work", "good job", "well done"],
                 ["celebrate"],
@@ -1464,10 +1464,6 @@ def every_morning():
         announce_quote()
 
     is_it_a_birthday()
-
-    if the_day == "Wednesday":
-        any_new_publications()
-
 
 # start Gerald
 if __name__ == "__main__":
