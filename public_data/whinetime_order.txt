@@ -1,2 +1,2 @@
-samroseg,speter7,blindor,atzanida667,cgwill,fbcb,vhurtado,jkurla,jbirky,ogeoko,ngbinh,ryliu,dino,bechoi,laurynwi,scharney,billyli,tomwagg,samgarza,tobinw,ykwang,stevengs,jfc20,rodolfog,suissa,hdelgad9,htohfa
-12
+jkurla,jfc20,ykwang,scharney,bechoi,ryliu,suissa,billyli,htohfa,laurynwi,rodolfog,blindor,atzanida667,ogeoko,tobinw,cgwill,dino,speter7,stevengs,hdelgad9,ngbinh,tomwagg,vhurtado,fbcb,samgarza,samroseg,jbirky
+20
