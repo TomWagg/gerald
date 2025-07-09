@@ -1351,9 +1351,18 @@ def announce_publication(user_id, name, papers):
 
 
 def export_channel_history(init_message, direct_msg):
+    """Export the full message history (including threads) of a channel, converting usernames and channel 
+    names from Slack IDs to readable names.
+
+    Parameters
+    ----------
+    init_message : `Slack Message`
+        The initial message that triggered the export
+    direct_msg : `bool`
+        Whether the message was a direct message (and thus whether to use a thread)
+    """
     messages = []
     cursor = None
-
     start_time = time.time()
 
     # get the channel ID from the initial trigger message
@@ -1362,10 +1371,10 @@ def export_channel_history(init_message, direct_msg):
     # send an initial response to tell them we're working on it
     app.client.chat_postMessage(text="Starting export of channel history, this may take a while...",
                                 channel=channel_id, thread_ts=init_message["ts"])
-    
+
     user_map, channel_map = get_user_channel_maps()
 
-    # Step 1: Fetch all top-level messages
+    # fetch every parent message
     while True:
         try:
             response = app.client.conversations_history(
@@ -1377,34 +1386,34 @@ def export_channel_history(init_message, direct_msg):
             cursor = response.get("response_metadata", {}).get("next_cursor")
             if not cursor:
                 break
-            time.sleep(1)  # Respect rate limits
+            time.sleep(1)  # Respect rate limits (1000 messages per minute)
         except SlackApiError as e:
             app.client.chat_postMessage(text=f"Failed to fetch messages: {e.response['error']}",
                                         channel=channel_id)
             return
 
-    print(f"Found {len(messages)} parent messages in channel {channel_id}")
 
     # let them know we've found all of the messages
     app.client.chat_postMessage(text=(f"Found {len(messages)} parent messages in this channel, "
                                       "now looking through threads..."),
                                 channel=channel_id, thread_ts=init_message["ts"])
+    print(f"Found {len(messages)} parent messages in channel {channel_id}")
+
+    # now we check every message individually
     lines = []
-
     n_threads = 0
-
-    # Step 2: Iterate through each message
     for msg in reversed(messages):  # Chronological order
         ts = msg.get("ts", "unknown")
         text = msg.get("text", "").replace("\n", " ")
         user_id = msg.get("user", "unknown")
         username = user_map.get(user_id, f"<{user_id}>")
 
+        # add the parent message with formatted time and expanded message
         lines.append(f"{format_ts(ts)}: {username}: {expand_mentions(text, user_map, channel_map)}")
-        # print(msg, username)
 
-        # Step 3: Fetch thread replies if this is a parent message
+        # check if the message is a thread starter
         if msg.get("thread_ts") == msg.get("ts") and msg.get("reply_count", 0) > 0:
+            # get every response to the message
             n_threads += 1
             try:
                 replies_response = app.client.conversations_replies(
@@ -1433,13 +1442,13 @@ def export_channel_history(init_message, direct_msg):
                                 channel=channel_id, thread_ts=init_message["ts"])
     print(f"Found {n_threads} threads in this channel, total messages exported: {len(lines)}")
 
-    # Step 4: Write to file
+    # write the whole lot to a file
     filename = f"channel_export_{channel_id}.txt"
     with open(filename, "w") as f:
         f.write("\n".join(lines))
 
+    # send the file to the channel
     try:
-        # New uploadV2 method — asynchronous, modern
         app.client.files_upload_v2(
             channel=channel_id,
             initial_comment="Here's the full history of this channel!",
@@ -1449,8 +1458,6 @@ def export_channel_history(init_message, direct_msg):
     except SlackApiError as e:
         app.client.chat_postMessage(text=f"Failed to upload the export file: {e.response['error']}",
                                     channel=channel_id)
-    # finally:
-    #     os.remove(filename)
 
 
 """ ---------- HELPER FUNCTIONS ---------- """
