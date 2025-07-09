@@ -1415,6 +1415,9 @@ def export_channel_history(init_message, direct_msg):
         if msg.get("thread_ts") == msg.get("ts") and msg.get("reply_count", 0) > 0:
             # get every response to the message
             n_threads += 1
+            if n_threads % 50 == 0:
+                app.client.chat_postMessage(text=f"Exported {n_threads} threads so far, continuing...",
+                                            channel=channel_id, thread_ts=init_message["ts"])
             try:
                 replies_response = app.client.conversations_replies(
                     channel=channel_id,
@@ -1429,10 +1432,12 @@ def export_channel_history(init_message, direct_msg):
                     r_username = user_map.get(r_user_id, f"<{r_user_id}>")
 
                     lines.append(f"    → {format_ts(r_ts)}: {r_username}: {expand_mentions(r_text, user_map, channel_map)}")
+                time.sleep(0.3)
             except SlackApiError as e:
                 app.client.chat_postMessage(
                     text=f"Could not fetch replies for thread {msg['ts']}: {e.response['error']}",
-                    channel=channel_id
+                    channel=channel_id,
+                    thread_ts=init_message["ts"]
                 )
 
     # let them know how many threads we found and what the total messages are
