@@ -5,6 +5,8 @@ from slack_sdk.errors import SlackApiError
 import re
 import numpy as np
 import datetime
+from zoneinfo import ZoneInfo
+import time
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
@@ -19,6 +21,8 @@ GERALD_ADMIN = "Tom Wagg"
 
 QUOTES_CHANNEL = "quotes"
 PAPERS_CHANNEL = "arxiv"
+
+PACIFIC = ZoneInfo("America/Los_Angeles")
 
 latest_whinetime_message = None
 
@@ -227,7 +231,8 @@ def reply_to_mentions(say, body, direct_msg=False):
                                                   r"(?=.*\bwhen\b)(?=.*\bbirthday\b)",
                                                   r"(?=.*(\bsmart\b|\bintelligent\b|\bbrain\b))(?=.*\byour?\b)",
                                                   r"(?=.*(\blatest\b|\brecent\b))(?=.*\bpapers?\b)",
-                                                  r"(?=.*\bwhen\b)(?=.*\bwhinetime\b)"],
+                                                  r"(?=.*\bwhen\b)(?=.*\bwhinetime\b)",
+                                                  r"(?=.*\bexport\b)(?=.*\bchannel\b)"],
                                                  [is_it_a_birthday,
                                                   start_whinetime_workflow,
                                                   any_new_publications,
@@ -238,11 +243,12 @@ def reply_to_mentions(say, body, direct_msg=False):
                                                   when_birthday,
                                                   reply_brain_size,
                                                   reply_recent_papers,
-                                                  when_whinetime_host],
+                                                  when_whinetime_host,
+                                                  export_channel_history],
                                                  [True, True, True, True,
-                                                  False, False, False, False, False, False, False],
+                                                  False, False, False, False, False, False, False, False],
                                                  [False, False, False, False,
-                                                  True, True, True, True, True, True, True]):
+                                                  True, True, True, True, True, True, True, True]):
         replied = mention_action(message=message, regex=regex, action=action,
                                  case_sensitive=case, pass_message=pass_message, direct_msg=direct_msg)
 
@@ -1341,7 +1347,161 @@ def announce_publication(user_id, name, papers):
                                 channel=channel, thread_ts=message["ts"])
 
 
+""" ----------   THE ARCHIVIST  ---------- """
+
+
+def export_channel_history(init_message, direct_msg):
+    messages = []
+    cursor = None
+
+    start_time = time.time()
+
+    # get the channel ID from the initial trigger message
+    channel_id = init_message["channel"]
+
+    # send an initial response to tell them we're working on it
+    app.client.chat_postMessage(text="Starting export of channel history, this may take a while...",
+                                channel=channel_id, thread_ts=init_message["ts"])
+    
+    user_map, channel_map = get_user_channel_maps()
+
+    # Step 1: Fetch all top-level messages
+    while True:
+        try:
+            response = app.client.conversations_history(
+                channel=channel_id,
+                limit=1000,
+                cursor=cursor
+            )
+            messages.extend(response["messages"])
+            cursor = response.get("response_metadata", {}).get("next_cursor")
+            if not cursor:
+                break
+            time.sleep(1)  # Respect rate limits
+        except SlackApiError as e:
+            app.client.chat_postMessage(text=f"Failed to fetch messages: {e.response['error']}",
+                                        channel=channel_id)
+            return
+
+    print(f"Found {len(messages)} parent messages in channel {channel_id}")
+
+    # let them know we've found all of the messages
+    app.client.chat_postMessage(text=(f"Found {len(messages)} parent messages in this channel, "
+                                      "now looking through threads..."),
+                                channel=channel_id, thread_ts=init_message["ts"])
+    lines = []
+
+    n_threads = 0
+
+    # Step 2: Iterate through each message
+    for msg in reversed(messages):  # Chronological order
+        ts = msg.get("ts", "unknown")
+        text = msg.get("text", "").replace("\n", " ")
+        user_id = msg.get("user", "unknown")
+        username = user_map.get(user_id, f"<{user_id}>")
+
+        lines.append(f"{format_ts(ts)}: {username}: {expand_mentions(text, user_map, channel_map)}")
+        # print(msg, username)
+
+        # Step 3: Fetch thread replies if this is a parent message
+        if msg.get("thread_ts") == msg.get("ts") and msg.get("reply_count", 0) > 0:
+            n_threads += 1
+            try:
+                replies_response = app.client.conversations_replies(
+                    channel=channel_id,
+                    ts=msg["ts"],
+                    limit=100
+                )
+                replies = replies_response.get("messages", [])[1:]  # Skip the parent
+                for reply in replies:
+                    r_ts = reply.get("ts", "unknown")
+                    r_text = reply.get("text", "").replace("\n", " ")
+                    r_user_id = reply.get("user", "unknown")
+                    r_username = user_map.get(r_user_id, f"<{r_user_id}>")
+
+                    lines.append(f"    → {format_ts(r_ts)}: {r_username}: {expand_mentions(r_text, user_map, channel_map)}")
+            except SlackApiError as e:
+                app.client.chat_postMessage(
+                    text=f"Could not fetch replies for thread {msg['ts']}: {e.response['error']}",
+                    channel=channel_id
+                )
+
+    # let them know how many threads we found and what the total messages are
+    app.client.chat_postMessage(text=(f"Found {n_threads} threads in this channel, "
+                                      f"total messages exported: {len(lines)}. Entire process took "
+                                      f"{time.time() - start_time:.2f} seconds."),
+                                channel=channel_id, thread_ts=init_message["ts"])
+    print(f"Found {n_threads} threads in this channel, total messages exported: {len(lines)}")
+
+    # Step 4: Write to file
+    filename = f"channel_export_{channel_id}.txt"
+    with open(filename, "w") as f:
+        f.write("\n".join(lines))
+
+    try:
+        # New uploadV2 method — asynchronous, modern
+        app.client.files_upload_v2(
+            channel=channel_id,
+            initial_comment="Here's the full history of this channel!",
+            file=filename,
+            title="Channel Export (with Threads)"
+        )
+    except SlackApiError as e:
+        app.client.chat_postMessage(text=f"Failed to upload the export file: {e.response['error']}",
+                                    channel=channel_id)
+    # finally:
+    #     os.remove(filename)
+
+
 """ ---------- HELPER FUNCTIONS ---------- """
+
+
+def get_user_channel_maps():
+    user_map = {}
+    cursor = None
+    while True:
+        resp = app.client.users_list(cursor=cursor)
+        for user in resp["members"]:
+            user_map[user["id"]] = f"@{user['name']}"
+        cursor = resp.get("response_metadata", {}).get("next_cursor")
+        if not cursor:
+            break
+
+    channel_map = {}
+    cursor = None
+    while True:
+        resp = app.client.conversations_list(types="public_channel,private_channel",
+                                             exclude_archived=True, limit=1000, cursor=cursor)
+        for channel in resp["channels"]:
+            channel_map[channel["id"]] = f"#{channel['name']}"
+        cursor = resp.get("response_metadata", {}).get("next_cursor")
+        if not cursor:
+            break
+
+    return user_map, channel_map
+
+
+def expand_mentions(text, user_map, channel_map):
+    def replace_user(match):
+        user_id = match.group(1)
+        return user_map.get(user_id, f"<@{user_id}>")
+
+    def replace_channel(match):
+        channel_id = match.group(1)
+        return channel_map.get(channel_id, f"<#{channel_id}>")
+
+    # Replace user mentions like <@U123456>
+    text = re.sub(r"<@([UW][A-Z0-9]+)>", replace_user, text)
+
+    # Replace channel mentions like <#C123456>
+    text = re.sub(r"<#([C][A-Z0-9]+)>", replace_channel, text)
+
+    return text
+
+
+def format_ts(ts_str):
+    ts = float(ts_str.split('.')[0])
+    return datetime.datetime.fromtimestamp(ts, tz=PACIFIC).strftime("%Y-%m-%d %H:%M")
 
 
 def bonk_someone(message):
